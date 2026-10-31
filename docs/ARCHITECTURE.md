@@ -59,6 +59,20 @@ The non-production project has a separate user directory. Its test users are not
 - Never expose service-role or secret keys in client bundles.
 - Production Auth settings, redirect allow-lists, SQL, migrations, RLS, storage, and data writes require separate explicit approval.
 
+## 4.1 Phase 2 local chat-engine boundary
+
+The first Chat Engine vertical slice uses a versioned browser-local adapter (vendrith-chat:local:v1). It is a development/test boundary, not a backend.
+
+- Message bodies are trimmed, non-empty, and limited to 4,000 characters.
+- Each send request carries a client-generated idempotency key; repeated requests with the same key do not append a second message.
+- Message ordering is deterministic by timestamp and message ID. History pagination uses a stable (createdAt, id) cursor.
+- A message is labelled saved_locally only after the browser storage write succeeds.
+- Browser-local data is scoped to that browser profile/device. It is not visible to other players, not backed up by the app, and not synchronized across devices.
+- No authentication, remote API, Supabase client, database write, or production credential is used by this adapter.
+- Storage errors are surfaced while preserving the draft so the user can retry manually. Corrupt-store recovery and a dedicated retry state remain open work.
+
+The local adapter must be replaced or wrapped by a separately reviewed server adapter before any message is represented as delivered or shared with another player. Local storage must never be treated as an authorization boundary or source of trusted sender identity.
+
 ## 5. Logical components
 
 ### Web client

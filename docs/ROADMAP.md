@@ -1,8 +1,8 @@
 # Vendrith Chat — Roadmap
 
 **Last reviewed:** 2026-11-01
-**Current phase:** Phase 1 — Foundation
-**Current status:** Implementation, GitHub synchronization, and automated CI verified; real-device browser verification remains open.
+**Current phase:** Phase 2 — Chat Engine
+**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine is under implementation.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -22,7 +22,8 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Configure CI to use `npm ci`, dependency audit, typecheck, unit tests, and production build.
 - [x] Set English as the primary application language (`lang="en"`); additional language support remains deferred.
 - [x] Track the reviewed `package-lock.json` and generated `next-env.d.ts` in Git and synchronize the foundation changes to GitHub.
-- [ ] Verify the running interface in an actual mobile browser/device and a desktop browser.
+- [x] Verify the running interface on mobile Chrome at two viewport sizes and in Chrome Android desktop mode.
+- [ ] Verify the running interface on a physical desktop browser/monitor.
 - [x] Confirm the updated GitHub Actions workflow passes on the synchronized commit.
 
 **Verification evidence:** see [Foundation verification — 2026-11-01](audits/FOUNDATION-VERIFICATION-2026-11-01.md).
@@ -31,14 +32,20 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 2 — Chat Engine
 
-**Status: Planned**
+**Status: In progress — local-only vertical slice implemented**
 
-- Define conversation, participant, message, ordering, pagination, and idempotency domain contracts.
-- Implement the message composer and conversation interactions behind a mock/test adapter first.
-- Define pending, sent, failed, empty, loading, and retry states without presenting unpersisted messages as delivered.
-- Add domain and UI tests before connecting persistence.
+- [x] Define message validation, stable ordering, cursor pagination, and client idempotency contracts.
+- [x] Implement an injectable local storage adapter with versioned browser storage; no network or Supabase dependency.
+- [x] Enable the composer and conversation switching against the local adapter.
+- [x] Clearly label locally saved messages; do not imply delivery to another player or server synchronization.
+- [x] Add domain tests for validation, message creation, duplicate requests, ordering, pagination, reload persistence, and unknown conversations.
+- [ ] Add explicit pending/failed/retry UI and a recoverable corrupt-storage path.
+- [ ] Add UI/browser tests for send, refresh, conversation switching, and storage failure.
+- [ ] Review local adapter limits and approve the server persistence contract before any backend integration.
 
-**Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; no production identity or database dependency is required.
+**Current verification:** 13 unit tests pass, TypeScript passes, dependency audit reports zero vulnerabilities. Production build and browser smoke verification are being run.
+
+**Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
 
 ## Phase 3 — Authentication & Identity
 
