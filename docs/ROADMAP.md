@@ -1,6 +1,6 @@
 # Vendrith Chat — Roadmap
 
-**Status:** Foundation and preview skeleton committed; WOV Auth contract source audit complete; Bolt implementation handoff prepared  
+**Status:** Foundation and preview skeleton committed; latest CI verified green; repository baseline recheck recorded; Auth and messaging remain unimplemented  
 **Date:** 2026-10-31
 
 The roadmap is dependency-driven. A phase is complete only when its acceptance criteria are verified and evidence is recorded.
@@ -34,7 +34,7 @@ The roadmap is dependency-driven. A phase is complete only when its acceptance c
 - [ ] Verify local install and startup.
 - [ ] Verify baseline automated tests and responsive behavior.
 
-**Current evidence:** GitHub Actions run [41210449910](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41210449910) completed successfully on commit `69f521ff198fecc0f7ff1c64d2e2a6df27cd8f70`. The workflow ran `npm install`, `npm run typecheck`, and `npm run build`. This does not replace local device/browser verification. Desktop Commander was offline during the latest environment check, so no local install, lockfile generation, or browser test is claimed.
+**Current evidence:** GitHub Actions run [41212204148](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41212204148) completed successfully on latest audited commit `0271987f57b8d4870f361a5e88c531716e2588d6`. The `validate` job passed dependency installation, TypeScript typecheck, and production build. The repository baseline recheck is recorded in [REPOSITORY-BASELINE-RECHECK-2026-10-31.md](audits/REPOSITORY-BASELINE-RECHECK-2026-10-31.md). No lockfile, lint/test scripts, local browser verification, or end-to-end tests are present/claimed.
 
 **Exit criteria:** reproducible clean install with committed lockfile, local startup, static checks, baseline tests, and responsive UI verification pass. Mock UI must not imply real message delivery or persistence.
 
