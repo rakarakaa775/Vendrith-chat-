@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-01
 **Current phase:** Phase 1 — Foundation
-**Current status:** Local implementation and automated checks verified; GitHub synchronization and real-device browser verification remain open.
+**Current status:** Implementation, GitHub synchronization, and automated CI verified; real-device browser verification remains open.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -21,11 +21,11 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Pin the vulnerable transitive PostCSS dependency through an npm override; `npm audit` reports zero vulnerabilities.
 - [x] Configure CI to use `npm ci`, dependency audit, typecheck, unit tests, and production build.
 - [x] Set English as the primary application language (`lang="en"`); additional language support remains deferred.
-- [ ] Track the reviewed `package-lock.json` and generated `next-env.d.ts` in Git and synchronize the foundation changes to GitHub.
+- [x] Track the reviewed `package-lock.json` and generated `next-env.d.ts` in Git and synchronize the foundation changes to GitHub.
 - [ ] Verify the running interface in an actual mobile browser/device and a desktop browser.
-- [ ] Confirm the updated GitHub Actions workflow passes on the synchronized commit.
+- [x] Confirm the updated GitHub Actions workflow passes on the synchronized commit.
 
-**Local evidence:** see [Foundation verification — 2026-11-01](audits/FOUNDATION-VERIFICATION-2026-11-01.md).
+**Verification evidence:** see [Foundation verification — 2026-11-01](audits/FOUNDATION-VERIFICATION-2026-11-01.md).
 
 **Exit criteria:** reproducible clean install from the committed lockfile; CI audit, typecheck, unit tests, and production build pass; local app starts; responsive UI is verified in mobile and desktop browsers; preview-only behavior is explicit. No real authentication, database access, or message delivery is implied by this phase.
 

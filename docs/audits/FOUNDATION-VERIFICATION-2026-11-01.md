@@ -32,13 +32,11 @@ This verification covers only the Vendrith Chat repository. No branch switch, co
 
 ## CI changes prepared
 
-`.github/workflows/ci.yml` now uses Node.js 22 with npm cache, `npm ci`, `npm audit --audit-level=low`, `npm run typecheck`, `npm test`, and `npm run build`. The updated workflow has not yet run on GitHub because these changes have not been committed or pushed.
+`.github/workflows/ci.yml` now uses Node.js 22 with npm cache, `npm ci`, `npm audit --audit-level=low`, `npm run typecheck`, `npm test`, and `npm run build`. The changes were committed and pushed to `main` as `4b3aa64613729e678d16354521b798442eafca9f`. GitHub Actions run [41223872028](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41223872028) completed successfully; install, dependency audit, typecheck, all five tests, production build, and job cleanup passed.
 
 ## Remaining acceptance checks
 
-1. Add the reviewed lockfile and generated `next-env.d.ts` to Git history and synchronize to GitHub.
-2. Run the updated GitHub Actions workflow on that commit.
-3. Verify the app in actual mobile and desktop browsers. A browser automation binary/framework was not available in the inspected environment, so source-level responsive rules are not reported as device/browser verification.
+1. Verify the app in actual mobile and desktop browsers. A browser automation binary/framework was not available in the inspected environment, so source-level responsive rules are not reported as device/browser verification.
 
 ## Verdict
 
