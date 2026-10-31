@@ -1,13 +1,13 @@
 # Vendrith Chat — Roadmap
 
-**Status:** Foundation decisions accepted; application skeleton next  
+**Status:** Foundation decisions accepted; application skeleton committed; local verification still pending  
 **Date:** 2026-10-31
 
 The roadmap is dependency-driven. A phase is complete only when its acceptance criteria are verified and evidence is recorded.
 
 ## Phase 0 — Foundation and architecture
 
-**Status: Decisions recorded**
+**Status: Decisions recorded; environment confirmation pending**
 
 - [x] Establish project purpose and repository boundary.
 - [x] Define initial architecture and identity principles.
@@ -15,37 +15,46 @@ The roadmap is dependency-driven. A phase is complete only when its acceptance c
 - [x] Define six-role workflow and evidence rules.
 - [x] Confirm shared canonical Supabase project direction; production changes remain gated.
 - [x] Select responsive Next.js web stack and document selective use of the Flutter reference.
-- [x] Define initial MVP scope: responsive shell, conversation list, direct conversation view, empty/loading/error states.
+- [x] Define initial MVP scope: responsive shell, conversation list, direct conversation view, and preview-only mock data.
 - [ ] Confirm isolated local/non-production development configuration.
 
 **Exit criteria:** approved scope, stack decision, local development plan, and integration contract draft. Architecture decisions: [ADR 0003](decisions/0003-shared-supabase-project.md) and [ADR 0004](decisions/0004-web-stack-and-reference-scope.md).
 
 ## Phase 1 — Repository and application skeleton
 
-**Status: Next**
+**Status: Partially verified — skeleton committed; CI green; local verification pending**
 
-- Inspect current repository state before scaffolding.
-- Add minimal Next.js App Router + TypeScript application skeleton.
-- Add responsive app shell, conversation list, and direct conversation view using clearly marked mock data.
-- Add formatting, linting, type checking, and test commands.
-- Add environment variable example with placeholders only; no production values.
-- Document how to run tests without production credentials.
-- Verify install, local startup, static checks, and baseline tests.
+- [x] Inspect repository state before scaffolding.
+- [x] Add minimal Next.js App Router + TypeScript application skeleton.
+- [x] Add responsive app shell, conversation list, and direct conversation view using clearly marked mock data.
+- [x] Add environment variable example with placeholders only; no production values.
+- [x] Add GitHub Actions checks for dependency installation, TypeScript type checking, and production build.
+- [ ] Add and verify formatting/linting and automated test commands.
+- [ ] Generate and commit a reviewed npm lockfile from an authorized development environment.
+- [ ] Verify local install and startup.
+- [ ] Verify baseline automated tests and responsive behavior.
 
-**Exit criteria:** clean install, local startup, static checks, and baseline tests pass. Mock UI must not imply real message delivery or persistence.
+**Current evidence:** GitHub Actions run [41210449910](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41210449910) completed successfully on commit `69f521ff198fecc0f7ff1c64d2e2a6df27cd8f70`. The workflow ran `npm install`, `npm run typecheck`, and `npm run build`. This does not replace local device/browser verification. Desktop Commander was offline during the latest environment check, so no local install, lockfile generation, or browser test is claimed.
+
+**Exit criteria:** reproducible clean install with committed lockfile, local startup, static checks, baseline tests, and responsive UI verification pass. Mock UI must not imply real message delivery or persistence.
 
 ## Phase 2 — Identity and authorization foundation
 
-**Status: Planned**
+**Status: Planned; implementation plan documented**
 
-- Inspect World of Vendrith authentication contract and token claims.
-- Confirm the trusted issuer/project configuration in an approved non-production environment.
-- Define server-side token verification and session handling.
-- Implement canonical identity mapping without duplicate player accounts.
-- Add authorization tests for unauthenticated and cross-user access.
-- Keep integration in a development/test environment.
+- [x] Record the canonical identity rule: verified Supabase Auth `user.id` / JWT `sub`, never a client-supplied ID, username, or email.
+- [x] Record production and non-production project boundaries and the no-production-write rule.
+- [ ] Inspect and verify the World of Vendrith authentication contract in the approved non-production environment.
+- [ ] Confirm trusted issuer/project configuration.
+- [ ] Implement request-scoped server/browser clients and secure session handling.
+- [ ] Implement login, signup, callback, and logout.
+- [ ] Protect the chat shell server-side and map identity from verified claims.
+- [ ] Add authorization tests for unauthenticated, invalid/expired token, and cross-user access.
+- [ ] Verify the flow with test-only identities in the non-production project.
 
-**Exit criteria:** verified identity can access only its own authorized chat resources; negative tests pass.
+Implementation plan: [AUTH-IMPLEMENTATION-PLAN.md](AUTH-IMPLEMENTATION-PLAN.md).
+
+**Exit criteria:** verified identity can access only its own authorized chat resources; negative tests pass. No production sign-in, Auth settings, SQL, RLS, migrations, or data writes are included without separate approval.
 
 ## Phase 3 — Direct messaging MVP
 
