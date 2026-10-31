@@ -9,7 +9,7 @@ const base = {
 
 function memoryStorage() {
   const values = new Map();
-  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
 }
 
 test("normalizes message whitespace and rejects empty content", () => {
@@ -79,18 +79,70 @@ test("local store rejects unknown conversations", () => {
   assert.throws(() => store.send(base), (error) => error instanceof ChatValidationError && error.code === "conversation_not_found");
 });
 
-test("local store reports malformed saved data instead of silently overwriting it", () => {
+test("local store reports corrupt saved data instead of silently overwriting it", () => {
   const storage = memoryStorage();
   storage.setItem("vendrith-chat:local:v1", "{not-json");
   const store = createLocalChatStore(storage, { seed: { "conversation-1": [] } });
-  assert.throws(() => store.load(), SyntaxError);
+  assert.throws(() => store.load(), (error) => error instanceof ChatValidationError && error.code === "corrupt_local_store");
 });
 
 test("local storage write failures are surfaced so the UI can preserve the draft", () => {
   const storage = {
     getItem: () => JSON.stringify({ version: 1, conversations: { "conversation-1": [] } }),
-    setItem: () => { throw new Error("Storage quota exceeded"); }
+    setItem: () => { throw new Error("Storage quota exceeded"); },
+    removeItem: () => {}
   };
   const store = createLocalChatStore(storage);
   assert.throws(() => store.send(base), /Storage quota exceeded/);
+});
+
+
+test("corrupt JSON is reported with a recoverable error and the raw backup is preserved", () => {
+  const storage = memoryStorage();
+  storage.setItem("vendrith-chat:local:v1", "{broken-json");
+  const store = createLocalChatStore(storage, { seed: { "conversation-1": [] } });
+  assert.throws(() => store.load(), (error) => error instanceof ChatValidationError && error.code === "corrupt_local_store");
+  assert.equal(store.exportRaw(), "{broken-json");
+});
+
+test("unsupported or malformed message records are rejected without overwriting source data", () => {
+  const storage = memoryStorage();
+  const raw = JSON.stringify({ version: 1, conversations: { "conversation-1": [{ id: 7 }] } });
+  storage.setItem("vendrith-chat:local:v1", raw);
+  const store = createLocalChatStore(storage);
+  assert.throws(() => store.load(), (error) => error instanceof ChatValidationError && error.code === "invalid_local_store");
+  assert.equal(store.exportRaw(), raw);
+});
+
+test("reset requires explicit confirmation and restores only the supplied local seed", () => {
+  const storage = memoryStorage();
+  storage.setItem("vendrith-chat:local:v1", "{broken");
+  const store = createLocalChatStore(storage, { seed: { "conversation-1": [] } });
+  assert.throws(() => store.reset(), (error) => error instanceof ChatValidationError && error.code === "reset_confirmation_required");
+  assert.equal(store.exportRaw(), "{broken");
+  const restored = store.reset({ confirmed: true });
+  assert.deepEqual(restored, { "conversation-1": [] });
+  assert.deepEqual(store.load(), { "conversation-1": [] });
+});
+
+test("a failed local write can be retried with the same request ID without duplication", () => {
+  const values = new Map([["vendrith-chat:local:v1", JSON.stringify({ version: 1, conversations: { "conversation-1": [] } })]]);
+  let failNextWrite = true;
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => {
+      if (failNextWrite) {
+        failNextWrite = false;
+        throw new Error("Temporary storage failure");
+      }
+      values.set(key, value);
+    },
+    removeItem: (key) => values.delete(key)
+  };
+  const store = createLocalChatStore(storage);
+  assert.throws(() => store.send(base), /Temporary storage failure/);
+  const retry = store.send(base);
+  assert.equal(retry.duplicate, false);
+  assert.equal(retry.message.clientMessageId, "request-1");
+  assert.equal(store.load()["conversation-1"].length, 1);
 });

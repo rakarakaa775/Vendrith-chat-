@@ -13,7 +13,9 @@
 - app/page.tsx now enables the composer and conversation switching using browser-local persistence.
 - Messages are marked saved_locally; the UI explicitly says they remain on this device and are not delivered or synchronized.
 - Browser storage uses the versioned key vendrith-chat:local:v1.
-- tests/chat-engine.test.mjs covers empty/oversized messages, normalization, message creation, duplicate request handling, ordering, pagination, reload persistence, and unknown conversations.
+- tests/chat-engine.test.mjs covers empty/oversized messages, normalization, message creation, duplicate request handling, ordering, pagination, reload persistence, unknown conversations, corrupt/unsupported data, explicit reset confirmation, and retry after a transient write failure.
+- The UI now exposes a pending local-save state and a retry action that retains the same client request ID.
+- Corrupt or unsupported local data is never silently overwritten; users can download the raw data and explicitly confirm a reset to sample conversations.
 
 ## Security and scope boundary
 
@@ -25,7 +27,7 @@
 
 ## Verification checkpoint
 
-- npm test: 15 passed, 0 failed.
+- npm test: 19 passed, 0 failed.
 - npm run typecheck: passed.
 - npm audit --audit-level=low: 0 vulnerabilities.
 - npm run build: passed; Next.js compiled and prerendered the application.
@@ -36,7 +38,6 @@
 
 ## Remaining before Phase 2 completion
 
-1. Verify sending, refresh persistence, switching conversations, and local-storage failure in a real browser.
-2. Add explicit pending/failed/retry UI and a user-guided corrupt-storage recovery path.
-3. Add UI/browser tests and review the future server persistence contract.
-4. Run GitHub Actions on the synchronized commit.
+1. Verify sending, refresh persistence, switching conversations, retry, and local-storage failure in a real browser.
+2. Add automated UI/browser tests and review the future server persistence contract.
+3. Run GitHub Actions on the synchronized commit.

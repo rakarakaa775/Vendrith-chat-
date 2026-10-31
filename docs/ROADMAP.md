@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-01
 **Current phase:** Phase 2 — Chat Engine
-**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine is under implementation.
+**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine has a tested local-only implementation; interactive browser verification remains open.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -39,11 +39,13 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Enable the composer and conversation switching against the local adapter.
 - [x] Clearly label locally saved messages; do not imply delivery to another player or server synchronization.
 - [x] Add domain tests for validation, message creation, duplicate requests, ordering, pagination, reload persistence, and unknown conversations.
-- [ ] Add explicit pending/failed/retry UI and a recoverable corrupt-storage path.
-- [ ] Add UI/browser tests for send, refresh, conversation switching, and storage failure.
+- [x] Add a visible pending-save state, failed-save message, and retry action that reuses the same idempotency key.
+- [x] Detect corrupt/unsupported local data without overwriting it; offer raw backup download and an explicit-confirmation reset.
+- [x] Test retry after transient storage write failure, corrupt data preservation, schema validation, and reset confirmation.
+- [ ] Add interactive browser tests for send, refresh, conversation switching, and storage failure.
 - [ ] Review local adapter limits and approve the server persistence contract before any backend integration.
 
-**Current verification:** 13 unit tests pass, TypeScript passes, dependency audit reports zero vulnerabilities. Production build and browser smoke verification are being run.
+**Current verification:** 19 unit tests pass, TypeScript passes, dependency audit reports zero vulnerabilities. Production build compiled and prerendered successfully; a real browser interaction check remains open.
 
 **Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
 

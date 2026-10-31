@@ -43,13 +43,20 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState("");
+  const [pending, setPending] = useState(false);
+  const [failedRequest, setFailedRequest] = useState<{ conversationId: string; clientMessageId: string; body: string } | null>(null);
+  const [storageProblem, setStorageProblem] = useState<"corrupt" | "invalid" | "unavailable" | null>(null);
   const [messagesByConversation, setMessagesByConversation] = useState(initialMessages);
 
   useEffect(() => {
     try {
       setMessagesByConversation(createStore().load());
-    } catch {
-      setSendError("Local message storage is unavailable in this browser.");
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === "corrupt_local_store") setStorageProblem("corrupt");
+      else if (code === "invalid_local_store") setStorageProblem("invalid");
+      else setStorageProblem("unavailable");
+      setSendError(error instanceof Error ? error.message : "Local message storage is unavailable.");
     }
   }, []);
 
@@ -63,23 +70,73 @@ export default function Home() {
     return filterConversations(searchable, search);
   }, [search, messagesByConversation]);
 
-  function handleSend(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveMessage(request: { conversationId: string; clientMessageId: string; body: string }) {
+    if (pending || storageProblem === "corrupt" || storageProblem === "invalid") return;
+    setPending(true);
     setSendError("");
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
     try {
-      const clientMessageId = window.crypto.randomUUID();
       const result = createStore().send({
-        conversationId: selected.id,
+        conversationId: request.conversationId,
         senderId: "local-player",
-        clientMessageId,
-        body: draft,
+        clientMessageId: request.clientMessageId,
+        body: request.body,
         sender: "You",
         mine: true
       });
-      setMessagesByConversation((current) => ({ ...current, [selected.id]: result.messages }));
-      setDraft("");
+      setMessagesByConversation((current) => ({ ...current, [request.conversationId]: result.messages }));
+      setDraft((current) => current === request.body ? "" : current);
+      setFailedRequest(null);
+      setSendError("");
     } catch (error) {
+      setFailedRequest(request);
       setSendError(error instanceof Error ? error.message : "Message could not be saved on this device.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function handleSend(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft.trim() || pending) return;
+    void saveMessage({
+      conversationId: selected.id,
+      clientMessageId: window.crypto.randomUUID(),
+      body: draft
+    });
+  }
+
+  function handleDownloadBackup() {
+    try {
+      const raw = createStore().exportRaw();
+      if (raw === null) {
+        setSendError("No saved local data was found to back up.");
+        return;
+      }
+      const blob = new Blob([raw], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "vendrith-chat-local-backup.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      setSendError("A copy of the existing local data was prepared for download.");
+    } catch {
+      setSendError("The browser could not read local data for backup. Do not reset this browser's storage.");
+    }
+  }
+
+  function handleResetLocalData() {
+    const confirmed = window.confirm("This will replace the unreadable local preview data with the original sample conversations. Download a backup first if you want to preserve the existing raw data. Continue?");
+    if (!confirmed) return;
+    try {
+      const restored = createStore().reset({ confirmed: true });
+      setMessagesByConversation(restored);
+      setStorageProblem(null);
+      setFailedRequest(null);
+      setSendError("Local preview data was reset to the sample conversations.");
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "Local data could not be reset.");
     }
   }
 
@@ -135,13 +192,21 @@ export default function Home() {
               </div>
             </div>
           ))}
+          {storageProblem && <div className="storage-recovery" role="alert">
+            <strong>{storageProblem === "corrupt" ? "Saved chat data could not be read" : storageProblem === "invalid" ? "Saved chat data has an unsupported format" : "Browser storage is unavailable"}</strong>
+            <p>{storageProblem === "unavailable" ? "Your browser may block local storage or have run out of space. Your message draft is kept in the composer." : "The existing data has not been automatically deleted or overwritten. Download a copy before choosing to reset the local preview."}</p>
+            {storageProblem !== "unavailable" && <div className="recovery-actions"><button type="button" onClick={handleDownloadBackup}>Download data backup</button><button type="button" onClick={handleResetLocalData}>Reset local preview</button></div>}
+          </div>}
           <div className="preview-notice"><span>✦</span><div><strong>Local preview mode</strong><p>Messages are saved only in this browser on this device. They are not delivered to another player or synchronized with a server.</p></div></div>
         </div>
         <form className="composer" onSubmit={handleSend}>
-          <input aria-label="Message composer" placeholder="Write a message..." value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={4000} />
-          <button type="submit" className="send-button" aria-label="Save message locally" disabled={!draft.trim()}>➤</button>
+          <input aria-label="Message composer" placeholder="Write a message..." value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); setSendError(""); }} maxLength={4000} disabled={pending || storageProblem === "corrupt" || storageProblem === "invalid"} />
+          <button type="submit" className="send-button" aria-label="Save message locally" disabled={!draft.trim() || pending || storageProblem === "corrupt" || storageProblem === "invalid"}>➤</button>
         </form>
-        <div className="composer-feedback" role="status">{sendError || `${draft.length}/4000 characters · Local storage only`}</div>
+        <div className="composer-feedback" role="status">
+          <span>{pending ? "Saving on this device…" : sendError || String(draft.length) + "/4000 characters · Local storage only"}</span>
+          {failedRequest && <button className="retry-button" type="button" disabled={pending} onClick={() => void saveMessage(failedRequest)}>Retry saving to {conversations.find((chat) => chat.id === failedRequest.conversationId)?.name ?? "conversation"}</button>}
+        </div>
         <div className="mobile-footnote">Vendrith Chat · Local preview only</div>
       </section>
     </main>
