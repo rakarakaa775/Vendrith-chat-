@@ -22,19 +22,19 @@ The roadmap is dependency-driven. A phase is complete only when its acceptance c
 
 ## Phase 1 — Repository and application skeleton
 
-**Status: Partially verified — skeleton committed; CI green; local verification pending**
+**Status: Partially verified — skeleton, search helper/tests, and CI checks green; lockfile and local/browser verification pending**
 
 - [x] Inspect repository state before scaffolding.
 - [x] Add minimal Next.js App Router + TypeScript application skeleton.
 - [x] Add responsive app shell, conversation list, and direct conversation view using clearly marked mock data.
 - [x] Add environment variable example with placeholders only; no production values.
 - [x] Add GitHub Actions checks for dependency installation, TypeScript type checking, and production build.
-- [ ] Add and verify formatting/linting and automated test commands.
+- [x] Add a dependency-free Node.js unit test command and conversation-filter tests (5 cases); GitHub Actions verifies them.
 - [ ] Generate and commit a reviewed npm lockfile from an authorized development environment.
 - [ ] Verify local install and startup.
 - [ ] Verify baseline automated tests and responsive behavior.
 
-**Current evidence:** GitHub Actions run [41212204148](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41212204148) completed successfully on latest audited commit `0271987f57b8d4870f361a5e88c531716e2588d6`. The `validate` job passed dependency installation, TypeScript typecheck, and production build. The repository baseline recheck is recorded in [REPOSITORY-BASELINE-RECHECK-2026-10-31.md](audits/REPOSITORY-BASELINE-RECHECK-2026-10-31.md). No lockfile, lint/test scripts, local browser verification, or end-to-end tests are present/claimed.
+**Current evidence:** GitHub Actions run [41213215264](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41213215264) completed successfully on commit `ce119dd2b531ea0becad1a2224ded3d441e67598`. The `validate` job passed dependency installation, TypeScript typecheck, five Node.js unit tests for conversation filtering, and production build. The repository baseline recheck is recorded in [REPOSITORY-BASELINE-RECHECK-2026-10-31.md](audits/REPOSITORY-BASELINE-RECHECK-2026-10-31.md). A committed lockfile, linting, local browser verification, and end-to-end tests remain outstanding.
 
 **Exit criteria:** reproducible clean install with committed lockfile, local startup, static checks, baseline tests, and responsive UI verification pass. Mock UI must not imply real message delivery or persistence.
 
