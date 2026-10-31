@@ -1,49 +1,48 @@
 # ADR 0001: Vendrith Chat foundation decisions
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-31
+- **Last reviewed:** 2026-11-01
 
 ## Context
 
-Vendrith Chat is a new repository intended to provide player communication for the World of Vendrith ecosystem. The repository was confirmed empty on its default branch. The game project already has its own identity and runtime responsibilities, so chat must not silently duplicate those responsibilities.
+Vendrith Chat is a separate repository for player communication in the World of Vendrith ecosystem. The game project already owns player identity and game-domain responsibilities. Chat must evolve independently without duplicating accounts or silently taking ownership of game data.
 
 ## Decisions
 
-### 1. Separate repository
+### 1. Separate repository and domain ownership
 
-Vendrith Chat remains independently versioned and developed. Integration with World of Vendrith occurs through documented contracts, not shared source edits.
+Vendrith Chat remains independently versioned and developed. It owns communication-domain data only. Integration with World of Vendrith occurs through documented contracts, not by sharing source files or allowing Chat to mutate game-domain records.
 
-### 2. Reuse canonical player identity
+### 2. Canonical player identity
 
-Chat will verify the existing trusted identity rather than creating duplicate player accounts. Exact token verification and identity mapping remain subject to inspection of the game project's current auth implementation.
+Use the shared canonical Supabase Auth identity. The stable player principal is the provider-verified `user.id` / JWT `sub`, never a client-supplied ID, username, or email. See [ADR 0002](0002-canonical-player-identity.md) and [ADR 0003](0003-shared-supabase-project.md).
 
-### 3. Documentation-first delivery
+### 3. Web application stack
 
-Architecture, roadmap, security baseline, and workflow are established before application scaffolding.
+Use Next.js App Router, React, and TypeScript. Adapt only relevant interaction patterns from the Flutter reference; do not copy its Firebase backend or Flutter-only dependencies. See [ADR 0004](0004-web-stack-and-reference-scope.md).
 
-### 4. Local-first development
+### 4. Local-first, isolated development
 
-The first implementation should be runnable and testable locally without paid managed infrastructure. Production provider selection is deferred.
+The preview shell and automated checks must run locally without paid managed infrastructure. Any future Supabase integration test must use the explicitly selected non-production project or local Supabase environment. Missing configuration must never fall back to production.
 
 ### 5. Server-authoritative security
 
-The backend owns authorization decisions. Client-supplied identity, optimistic UI state, and realtime subscriptions are never treated as authorization evidence.
+The backend verifies identity and authorizes every protected operation. Client-supplied identity, hidden UI controls, optimistic UI state, and realtime subscriptions are never authorization evidence.
 
-### 6. MVP order
+### 6. Dependency-driven delivery
 
-Direct messaging and identity/authorization foundations precede friends, groups, media, and external notifications.
+Deliver the foundation before the chat engine, identity, persistence, realtime, social/community, media, and production hardening phases. Each phase requires planning, implementation, QA, and independent verification with recorded evidence.
 
 ## Deferred decisions
 
-- Frontend and backend framework
-- Database engine/provider and migration tooling
-- Realtime transport
-- Hosting/deployment platform
-- Exact identity token issuer, audience, claims, and verification mechanism
-- Message edit/delete and retention policy
-- Moderation/reporting workflow
+- Exact authentication UX and any cross-origin session handoff
+- Chat schema, migrations, grants, RLS policies, and rollback strategy
+- Realtime transport and history recovery implementation
+- Hosting/deployment platform and production integration timing
+- Message edit/delete, retention, moderation, and reporting policy
 - Media storage, scanning, and retention
 
 ## Consequences
 
-This approach reduces premature vendor and framework lock-in. It also means implementation cannot begin until the auth contract and local stack are inspected and selected. The documents are planning artifacts, not working software.
+The architecture aligns with the eventual unified Vendrith website while preserving independent development. The current app remains a preview; this ADR does not authorize production Auth changes, database writes, migrations, or deployment.

@@ -4,8 +4,8 @@ Vendrith Chat is the standalone web communication service for the World of Vendr
 
 ## Current status
 
-**Stage:** Foundation and responsive preview committed; authentication and messaging are not yet implemented.  
-**Repository:** `rakarakaa775/Vendrith-chat-`  
+**Stage:** Foundation implemented and locally verified; GitHub synchronization and real-device browser verification remain pending. English is the primary application language. Authentication and messaging are not yet implemented.
+**Repository:** `rakarakaa775/Vendrith-chat-`
 **Default branch:** `main`
 
 The current application is a design preview with illustrative mock conversations. It does not yet authenticate users, send or persist messages, or connect to a chat database.
@@ -24,6 +24,7 @@ Friends, groups, media, push notifications, calls, AI chat, and game-world actio
 ## Architecture and safety
 
 - Next.js App Router, TypeScript, React, minimal styling.
+- npm lockfile with reproducible `npm ci`; CI checks dependency audit, typecheck, unit tests, and production build.
 - Supabase Auth is the identity authority; verified `user.id` / JWT `sub` is the stable player identity.
 - Chat owns chat-domain data only. It must not mutate World of Vendrith game data.
 - Production integration, Auth configuration changes, SQL/RLS/migrations, and production data writes require separate explicit approval.
@@ -44,6 +45,7 @@ Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Te
 - [WOV authentication contract recheck](docs/audits/WOV-AUTH-CONTRACT-RECHECK-2026-10-31.md)
 - [Bolt AI implementation handoff](docs/BOLT-AI-HANDOFF.md)
 - [Architecture decisions](docs/decisions/)
+- [Foundation verification — 2026-11-01](docs/audits/FOUNDATION-VERIFICATION-2026-11-01.md)
 
 ## Status vocabulary
 

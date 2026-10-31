@@ -1,6 +1,6 @@
 # ADR 0002: Canonical World of Vendrith player identity
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-31
 - **Evidence:** Read-only audit of `World-of-vendrith` branch `feat/vendrith-ecc-v1`, HEAD `8380b90aa1c84b6e68b8f4d2f4f0868dface2e03`.
 
@@ -10,7 +10,7 @@ World of Vendrith currently uses Supabase Auth. Its browser auth helper resolves
 
 Vendrith Chat must identify the same players without creating duplicate player accounts.
 
-## Decision proposed
+## Decision
 
 1. World of Vendrith's canonical Supabase Auth user remains the source of truth for player identity.
 2. Chat's stable principal is the verified Supabase Auth `user.id` (UUID / JWT subject), never username or email.
