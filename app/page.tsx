@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { filterConversations } from "@/lib/filter-conversations.mjs";
 
 const conversations = [
   { initials: "EL", name: "Elaria Moonwhisper", message: "The northern gate is ready.", time: "09:42", unread: 2, online: true, tone: "violet", messages: [{ sender: "Elaria", body: "The northern gate is ready. The scouts have returned with news from the old forest.", time: "09:38", mine: false }, { sender: "You", body: "That was faster than expected. Did they find a safe route?", time: "09:40", mine: true }, { sender: "Elaria", body: "Yes. I marked it on the map. We should meet before sunset.", time: "09:42", mine: false }] },
@@ -15,7 +16,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const selected = conversations.find((chat) => chat.name === selectedName) ?? conversations[0];
   const filteredConversations = useMemo(
-    () => conversations.filter((chat) => chat.name.toLowerCase().includes(search.toLowerCase()) || chat.message.toLowerCase().includes(search.toLowerCase())),
+    () => filterConversations(conversations, search),
     [search]
   );
 
