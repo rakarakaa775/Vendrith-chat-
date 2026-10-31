@@ -31,8 +31,7 @@ Values are intentionally blank. Use the non-production project only for isolated
 
 ## Planned implementation
 
-1. Pin `@supabase/ssr` and `@supabase/supabase-js` to reviewed exact versions and commit the generated npm lockfile.
-2. Pin reviewed exact versions of `@supabase/ssr` and `@supabase/supabase-js`, generate the npm lockfile in an authorized Node environment, and commit both together. Do not guess or hand-author lockfile contents.
+1. Pin reviewed exact versions of `@supabase/ssr` and `@supabase/supabase-js`, generate the npm lockfile in an authorized Node environment, and commit both together. Do not guess or hand-author lockfile contents.
 3. Implement request-scoped browser and server Supabase clients using cookie-based SSR.
 4. This repository currently uses Next.js 15.x. Use `middleware.ts` with `export async function middleware` for session refresh; Supabase's current guide uses `proxy.ts` only for Next.js 16 and later. Revisit this filename only as part of an explicit Next.js major upgrade.
 5. In middleware and protected server entry points, validate with `auth.getClaims()`; use `getUser()` when a fresh Auth user record is specifically needed. Never authorize from the user object returned by `getSession()` alone.
@@ -53,7 +52,7 @@ Values are intentionally blank. Use the non-production project only for isolated
 
 ## Current implementation gate
 
-- The current repository CI run `41213215264` passed dependency installation, TypeScript, unit tests, and production build on 2026-10-31.
+- GitHub Actions run `41213379376` passed dependency installation, TypeScript, all five unit tests, and the production build on commit `98bf460514538a18334a98b6528d7ff0055cba3b` (2026-10-31). The preceding code baseline run `41213215264` also passed.
 - The project still has no committed npm lockfile. CI passing with `npm install` does not make dependency resolution reproducible.
 - GitHub source editing is available, but no authorized local terminal is currently available to generate and review a lockfile. Do not add Supabase dependencies or authentication source imports until exact package versions and a generated lockfile can be committed together.
 - The `.env.example` file intentionally contains no credentials. Keep both production and non-production values out of Git.
