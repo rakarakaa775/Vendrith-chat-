@@ -1,6 +1,6 @@
 # Vendrith Chat — Roadmap
 
-**Status:** Foundation decisions accepted; application skeleton committed; local verification still pending  
+**Status:** Foundation and preview skeleton committed; WOV Auth contract source audit complete; Bolt implementation handoff prepared  
 **Date:** 2026-10-31
 
 The roadmap is dependency-driven. A phase is complete only when its acceptance criteria are verified and evidence is recorded.
@@ -44,15 +44,15 @@ The roadmap is dependency-driven. A phase is complete only when its acceptance c
 
 - [x] Record the canonical identity rule: verified Supabase Auth `user.id` / JWT `sub`, never a client-supplied ID, username, or email.
 - [x] Record production and non-production project boundaries and the no-production-write rule.
-- [ ] Inspect and verify the World of Vendrith authentication contract in the approved non-production environment.
-- [ ] Confirm trusted issuer/project configuration.
+- [x] Recheck the World of Vendrith authentication source contract (read-only); runtime/non-production identity verification remains pending.
+- [ ] Confirm trusted issuer/project configuration through an isolated non-production runtime test.
 - [ ] Implement request-scoped server/browser clients and secure session handling.
 - [ ] Implement login, signup, callback, and logout.
 - [ ] Protect the chat shell server-side and map identity from verified claims.
 - [ ] Add authorization tests for unauthenticated, invalid/expired token, and cross-user access.
 - [ ] Verify the flow with test-only identities in the non-production project.
 
-Implementation plan: [AUTH-IMPLEMENTATION-PLAN.md](AUTH-IMPLEMENTATION-PLAN.md).
+Implementation plan: [AUTH-IMPLEMENTATION-PLAN.md](AUTH-IMPLEMENTATION-PLAN.md). Source audit: [WOV Auth contract recheck](audits/WOV-AUTH-CONTRACT-RECHECK-2026-10-31.md). Implementation brief for Bolt: [BOLT-AI-HANDOFF.md](BOLT-AI-HANDOFF.md).
 
 **Exit criteria:** verified identity can access only its own authorized chat resources; negative tests pass. No production sign-in, Auth settings, SQL, RLS, migrations, or data writes are included without separate approval.
 
