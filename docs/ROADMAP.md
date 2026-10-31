@@ -34,7 +34,7 @@ The roadmap is dependency-driven. A phase is complete only when its acceptance c
 - [ ] Verify local install and startup.
 - [ ] Verify baseline automated tests and responsive behavior.
 
-**Current evidence:** GitHub Actions run [41213215264](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41213215264) completed successfully on commit `ce119dd2b531ea0becad1a2224ded3d441e67598`. The `validate` job passed dependency installation, TypeScript typecheck, five Node.js unit tests for conversation filtering, and production build. The repository baseline recheck is recorded in [REPOSITORY-BASELINE-RECHECK-2026-10-31.md](audits/REPOSITORY-BASELINE-RECHECK-2026-10-31.md). A committed lockfile, linting, local browser verification, and end-to-end tests remain outstanding.
+**Current evidence:** GitHub Actions run [41213379376](https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41213379376) completed successfully on commit `98bf460514538a18334a98b6528d7ff0055cba3b`. The `validate` job passed dependency installation, TypeScript typecheck, all five Node.js unit tests for conversation filtering, and production build. The repository baseline recheck is recorded in [REPOSITORY-BASELINE-RECHECK-2026-10-31.md](audits/REPOSITORY-BASELINE-RECHECK-2026-10-31.md). A committed lockfile, linting, local browser verification, and end-to-end tests remain outstanding.
 
 **Exit criteria:** reproducible clean install with committed lockfile, local startup, static checks, baseline tests, and responsive UI verification pass. Mock UI must not imply real message delivery or persistence.
 
