@@ -1,110 +1,135 @@
 # Vendrith Chat — Architecture
 
-**Status:** Proposed foundation  
+**Status:** Selected initial web architecture; runtime implementation pending  
 **Last reviewed:** 2026-10-31
 
-This document defines the initial system boundaries. It is a design proposal, not a claim that these services or integrations already exist.
+This document records the agreed architecture and current implementation boundary. It is not a claim that authentication, persistence, or messaging already work.
 
 ## 1. Product boundary
 
-Vendrith Chat is a standalone application/service for player communication. World of Vendrith remains the owner of game worlds, gameplay state, and the canonical player identity.
+Vendrith Chat is a standalone web application during development and will later be integrated into the larger World of Vendrith website.
 
-Vendrith Chat owns chat-domain data only:
-
+Chat owns only communication-domain data:
+- Chat-specific display profile/preferences
 - Conversations and conversation membership
-- Messages and message status
+- Messages and message lifecycle
 - Friend relationships and blocks (subject to product approval)
-- Group metadata and roles
-- Attachment metadata and notification preferences
+- Group metadata and roles (later phase)
+- Attachment metadata and notification preferences (later phase)
 
-It must not become the source of truth for player progression, inventory, world state, character ownership, or gameplay permissions.
+World of Vendrith remains the owner of player identity and all game-domain data, including worlds, maps, characters, inventory, progression, and gameplay permissions. Chat must not mutate those records.
 
-## 2. Identity integration
+## 2. Selected technology
 
-**Principle: one player identity, multiple authorized applications.**
+- Next.js App Router
+- TypeScript
+- React
+- Existing CSS / minimal Tailwind; avoid introducing a large UI framework without need
+- Supabase Auth as the canonical identity authority
+- Supabase Postgres for chat-owned persistence, subject to schema/RLS review and explicit environment approval
+- Supabase SSR integration for cookie-based web sessions
+- Supabase Realtime only after authorization boundaries and history recovery are verified
 
-- Reuse the existing World of Vendrith authentication identity where technically supported.
-- Do not create a parallel username/password account database for players.
-- The chat backend must verify identity credentials server-side; never trust a user ID supplied only by the browser.
-- Map the verified external subject to an internal chat principal using a stable, unique identity key.
-- Keep authorization checks in the backend for every conversation, message, group, and attachment operation.
-- Define token issuer, audience, expiry, key rotation, logout/revocation behavior, and service-to-service trust before production integration.
+The application skeleton and mock responsive chat screen exist. Authentication, database schema, RLS, APIs, realtime, and real message delivery are not yet implemented.
 
-The exact authentication verification mechanism is an implementation decision pending inspection of the current World of Vendrith auth configuration. Do not assume that sharing a frontend session automatically authorizes backend API calls.
+## 3. Identity and session contract
 
-## 3. Logical components
+- The stable player identity is the server/provider-verified Supabase Auth `user.id` / JWT `sub`.
+- Email, username, display name, and editable user metadata are not identity or authorization keys.
+- Never trust a browser-supplied `user_id`, sender ID, username, or profile field to establish identity.
+- Server routes/actions must validate the trusted session/claims using the supported Supabase SSR pattern. Client-only session state is not server authorization.
+- Use request-scoped server/browser clients and secure cookie handling. Keep redirect targets constrained to local application paths.
+- Separate origins do not automatically share cookies. Same Supabase project does not, by itself, provide seamless cross-origin SSO.
+- Do not put tokens in URLs, message bodies, logs, or analytics.
 
-### Client
-Responsive web client for conversation lists, message timelines, compose controls, friend/group views, and notification settings. It is an untrusted presentation layer.
+## 4. Environment boundary
 
-### Application API
-Authenticated entry point for chat commands and queries. It validates input, applies authorization, enforces rate limits, and coordinates domain operations.
+Known project roles:
 
-### Realtime gateway
-Delivers authorized message and presence events. It must not bypass the same membership and authorization rules used by the application API. Realtime transport may be WebSocket, Server-Sent Events, or a managed equivalent; choose after a small technical spike.
+| Environment | Project ref | Permitted use |
+| --- | --- | --- |
+| Canonical World of Vendrith production | `ojtmfokjcirvjvhnbnos` | Identity authority target only; no development writes or experiments |
+| Vendrith Non-Production E2E | `npvlokuszipgwrdipeoi` | Isolated test identities and explicitly approved non-production verification |
+
+The non-production project has a separate user directory. Its test users are not production players.
+
+- Missing or invalid configuration must fail closed or show an explicit mock preview.
+- Never silently fall back to production.
+- Only public publishable/legacy anon keys may be used in browser-exposed configuration.
+- Never expose service-role or secret keys in client bundles.
+- Production Auth settings, redirect allow-lists, SQL, migrations, RLS, storage, and data writes require separate explicit approval.
+
+## 5. Logical components
+
+### Web client
+Responsive conversation list, conversation detail, message composer, auth screens, and accessible loading/empty/error states. The client is an untrusted presentation layer.
+
+### Server authorization boundary
+Server components, route handlers, and server actions validate the user session and derive the principal from trusted claims. Every chat operation is scoped to that principal.
 
 ### Chat domain
-Contains conversation, membership, message, friendship, block, group-role, and delivery-state rules. Keep business rules independent from transport and storage details.
+Conversation creation, membership, message validation, idempotency, ordering, and lifecycle rules. Keep domain rules independent from UI components.
 
 ### Persistence
-Stores chat-owned records with relational constraints and indexes. Local development must be possible without paid infrastructure. Production database/provider selection is deferred.
+Relational chat-owned tables with constraints, indexes, and RLS. Every exposed table must have RLS enabled and policies matching the actual relationship model. RLS is not replaced by hidden UI controls or authenticated-role-only policies.
 
-### Attachment storage
-Stores binary media separately from message records. Use private objects and short-lived, authorization-checked access URLs. Attachment upload, scanning, size/type limits, retention, and deletion need explicit policies before launch.
+### Realtime (later)
+Delivers authorized events only to conversation members. Realtime is an optimization, not the source of truth; clients recover missed events from paginated history.
 
-### Notification delivery
-Creates in-app notification events first. External push/email delivery is a later capability and must respect user preferences and consent.
+## 6. Initial direct-message data model (proposal only)
 
-## 4. Suggested request flow
+A minimal first pass may use:
+- `chat_profiles`: one row keyed by Auth UUID; display-only fields.
+- `conversations`: UUID, direct type, timestamps, lifecycle state.
+- `conversation_members`: conversation UUID, Auth UUID, joined/left timestamps, last_read_at; unique pair.
+- `messages`: UUID, conversation UUID, sender Auth UUID, body, timestamps, deletion state, client idempotency key.
 
-1. Client presents a credential issued by the trusted identity provider.
-2. API verifies the credential and resolves the chat principal.
-3. API validates the requested operation and payload.
-4. Domain layer checks conversation membership, block state, and role permissions.
-5. Persistence commits the authorized state change.
-6. Realtime gateway publishes an event only to authorized recipients.
-7. Client reconciles the event with server state; it does not treat optimistic UI as proof of delivery.
+Before migration creation, review:
+- Whether direct conversation identity is represented by a canonical pair key or another race-safe uniqueness strategy.
+- How membership policies avoid recursive RLS dependencies.
+- Whether clients can write membership rows directly or only through a narrowly authorized server operation.
+- How message sender identity is constrained to `auth.uid()`.
+- Whether updates include both `USING` and `WITH CHECK` so ownership cannot be reassigned.
+- Stable chronological pagination and indexes.
+- Message length, retention, deletion, and idempotency semantics.
 
-## 5. Initial data model (conceptual)
+This is a proposal, not authorization to create or apply remote migrations.
 
-- `chat_profiles`: chat-specific display preferences keyed to a verified external identity.
-- `friendships`: directed request/acceptance state or a normalized relationship model; exact model to be decided.
-- `blocks`: blocker and blocked principal, unique pair.
-- `conversations`: direct/group type, creator, timestamps, lifecycle state.
-- `conversation_members`: principal, role, joined/left timestamps, notification settings.
-- `messages`: conversation, sender, body/content type, created/edited/deleted timestamps, client idempotency key.
-- `message_receipts`: message, recipient, delivered/read timestamps where product requirements justify the cost.
-- `attachments`: storage key, owner, MIME type, size, checksum, scan state, lifecycle state.
-- `notification_events`: recipient, event type, reference, created/read timestamps.
+## 7. Request flow
 
-All ownership and membership relationships require database constraints where possible. Message retrieval must be paginated and ordered with stable cursors.
+1. Browser submits a request using its secure application session.
+2. Server validates the session against the configured trusted Supabase project.
+3. Server derives the principal from verified claims.
+4. Input is validated and bounded.
+5. Authorization checks conversation membership and applicable block/role rules.
+6. Database constraints and RLS enforce the allowed operation.
+7. A successful commit is the point at which the message is considered persisted.
+8. Realtime may notify authorized recipients after commit; clients reconcile against persisted history.
 
-## 6. Reliability and correctness
+## 8. Reliability and correctness
 
-- Sending a message must be idempotent for a client-generated request key.
-- A message is not considered persisted until the transaction commits.
-- Realtime delivery is an optimization; clients must be able to recover missed events by fetching history.
-- Define ordering guarantees per conversation; do not promise global ordering.
-- Use pagination rather than loading full conversation history.
-- Treat presence as ephemeral and approximate, not authoritative gameplay state.
-- Define retention and deletion semantics before enabling user-generated media.
+- Sending is idempotent using a client-generated request key.
+- Do not show a failed/pending message as delivered.
+- Paginate history with a stable cursor and deterministic ordering.
+- Prevent duplicate direct threads under concurrent creation.
+- Realtime events can be missed; history fetch must recover state.
+- Presence, when added, is ephemeral and approximate, not authoritative game state.
 
-## 7. Technology selection gates
+## 9. Delivery stages
 
-No framework or vendor is locked by this document. Before implementation, compare options against:
+1. Repository baseline and responsive mock shell.
+2. Authentication and protected server boundary.
+3. Reviewed chat schema/RLS design and isolated non-production provisioning.
+4. Direct-message persistence and two-test-user authorization tests.
+5. Friends, blocks, presence, groups.
+6. Media and notifications after privacy, abuse, and cost review.
+7. Production integration only after explicit approval and release review.
 
-- Existing repository conventions and maintainability
-- Local development without paid services
-- Authentication compatibility with World of Vendrith
-- Realtime reliability and operational complexity
-- Data portability and backup/export
-- Security controls and testability
-- Cost at expected early usage
+## 10. Explicit non-goals
 
-A likely web stack can be proposed after repository requirements and deployment constraints are confirmed. Avoid introducing a second backend/database platform solely for convenience.
-
-## 8. Deployment boundary
-
-Development and test environments must use isolated credentials and data. Production integration requires explicit environment separation, least-privilege credentials, backup/restore procedures, monitoring, and a rollback plan.
-
-Never commit secrets, service-role keys, private signing keys, or production data.
+- Firebase Auth, Firestore, Firebase Storage, or Firebase Cloud Messaging.
+- A second player-account database.
+- Game-world mutation APIs.
+- Voice/video calls, global public channels, AI chat, or push delivery in the initial MVP.
+- Production database/Auth changes without separate approval.
+- Claims of end-to-end functionality based only on a successful build or static preview.
