@@ -1,56 +1,49 @@
 # Vendrith Chat
 
-Vendrith Chat is the standalone communication service for the World of Vendrith ecosystem. It is developed in its own repository so chat features can evolve without coupling their implementation to the game engine.
+Vendrith Chat is the standalone web communication service for the World of Vendrith ecosystem. It is developed in its own repository so chat features can evolve independently before later integration into the larger Vendrith website.
 
-## Project status
+## Current status
 
-**Phase:** Foundation and architecture  
+**Stage:** Foundation and responsive preview committed; authentication and messaging are not yet implemented.  
 **Repository:** `rakarakaa775/Vendrith-chat-`  
 **Default branch:** `main`
 
-This repository is currently documentation-first. No application framework, database provider, deployment target, or production integration has been selected yet.
+The current application is a design preview with illustrative mock conversations. It does not yet authenticate users, send or persist messages, or connect to a chat database.
 
 ## Product direction
 
-Vendrith Chat is intended to support:
+The first MVP targets:
+- Email/password sign-in and registration using the canonical Supabase Auth identity.
+- Protected responsive chat shell.
+- Conversation list and direct-message view.
+- Secure membership-scoped message history and sending.
+- Automated authorization and messaging tests.
 
-- Private one-to-one conversations
-- Friends, blocks, and player presence
-- Group conversations and membership permissions
-- Message history and delivery state
-- Media attachments and notifications
-- Integration with World of Vendrith player identity without creating duplicate player accounts
+Friends, groups, media, push notifications, calls, AI chat, and game-world actions are later or separately approved scope.
 
-The detailed boundaries, security requirements, staged roadmap, and architecture decisions are documented in [docs/](docs/).
+## Architecture and safety
 
-## Non-goals for the foundation phase
-
-- Do not modify the World of Vendrith repository.
-- Do not connect to or mutate a production database.
-- Do not create a second player identity system.
-- Do not add paid infrastructure before a cost and necessity review.
-- Do not claim a feature is complete without reproducible evidence.
+- Next.js App Router, TypeScript, React, minimal styling.
+- Supabase Auth is the identity authority; verified `user.id` / JWT `sub` is the stable player identity.
+- Chat owns chat-domain data only. It must not mutate World of Vendrith game data.
+- Production integration, Auth configuration changes, SQL/RLS/migrations, and production data writes require separate explicit approval.
+- Use isolated non-production test identities. Never silently fall back to production.
+- No Firebase and no service-role key in browser code.
 
 ## Development workflow
 
-Work proceeds through six sequential roles:
+Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Tester, Integrator, and Verifikator. See [docs/WORKFLOW.md](docs/WORKFLOW.md).
 
-1. Roadmap — define scope, dependencies, and acceptance criteria.
-2. Auditor — inspect current evidence and identify risks.
-3. Implementer — make only approved changes.
-4. QA Tester — run focused tests and record results.
-5. Integrator — check compatibility and integration boundaries.
-6. Verifikator — independently verify evidence and completion claims.
-
-See [docs/WORKFLOW.md](docs/WORKFLOW.md).
-
-## Documentation
+## Key documents
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Security model](docs/SECURITY.md)
 - [Workflow and evidence rules](docs/WORKFLOW.md)
-- [Architecture decisions](docs/decisions/0001-foundation-decisions.md)
+- [Authentication implementation plan](docs/AUTH-IMPLEMENTATION-PLAN.md)
+- [WOV authentication contract recheck](docs/audits/WOV-AUTH-CONTRACT-RECHECK-2026-10-31.md)
+- [Bolt AI implementation handoff](docs/BOLT-AI-HANDOFF.md)
+- [Architecture decisions](docs/decisions/)
 
 ## Status vocabulary
 
@@ -59,4 +52,4 @@ See [docs/WORKFLOW.md](docs/WORKFLOW.md).
 - **Verified:** acceptance criteria passed with recorded evidence.
 - **Blocked:** progress depends on an unresolved external decision or prerequisite.
 
-A document or design is not evidence that a working application feature exists.
+A design document or green CI run is not evidence that an end-to-end product feature works.
