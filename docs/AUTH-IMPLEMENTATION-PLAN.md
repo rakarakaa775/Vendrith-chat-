@@ -1,6 +1,6 @@
 # Authentication Implementation Plan
 
-- Status: Ready for implementation; dependency installation is blocked until an authorized development terminal is online.
+- Status: Planned; implementation remains gated on an explicitly approved non-production integration task and completion of the identity/session contract review.
 - Date: 2026-10-31
 
 ## Objective
@@ -53,8 +53,8 @@ Values are intentionally blank. Use the non-production project only for isolated
 ## Current implementation gate
 
 - GitHub Actions run `41213379376` passed dependency installation, TypeScript, all five unit tests, and the production build on commit `98bf460514538a18334a98b6528d7ff0055cba3b` (2026-10-31). The preceding code baseline run `41213215264` also passed.
-- The project still has no committed npm lockfile. CI passing with `npm install` does not make dependency resolution reproducible.
-- GitHub source editing is available, but no authorized local terminal is currently available to generate and review a lockfile. Do not add Supabase dependencies or authentication source imports until exact package versions and a generated lockfile can be committed together.
+- `package-lock.json` is now committed and CI uses `npm ci`, so dependency resolution is reproducible for the current dependency set.
+- No Supabase packages or authentication source imports have been added. Before introducing them, select exact compatible versions, generate the lockfile with npm, and verify the non-production-only environment boundary.
 - The `.env.example` file intentionally contains no credentials. Keep both production and non-production values out of Git.
 
 ## Framework-specific implementation note

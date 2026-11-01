@@ -39,6 +39,7 @@ Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Te
 ## Key documents
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Chat persistence contract draft](docs/decisions/0005-chat-persistence-contract.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Security model](docs/SECURITY.md)
 - [Workflow and evidence rules](docs/WORKFLOW.md)

@@ -1,6 +1,6 @@
 # Vendrith Chat — Architecture
 
-**Status:** Selected initial web architecture; runtime implementation pending  
+**Status:** Foundation and local-only Chat Engine implemented; authentication and remote runtime pending
 **Last reviewed:** 2026-10-31
 
 This document records the agreed architecture and current implementation boundary. It is not a claim that authentication, persistence, or messaging already work.
@@ -30,7 +30,7 @@ World of Vendrith remains the owner of player identity and all game-domain data,
 - Supabase SSR integration for cookie-based web sessions
 - Supabase Realtime only after authorization boundaries and history recovery are verified
 
-The application skeleton and mock responsive chat screen exist. Authentication, database schema, RLS, APIs, realtime, and real message delivery are not yet implemented.
+The responsive chat shell and local-only Chat Engine vertical slice are implemented. Authentication, database schema, RLS, remote APIs, realtime, and real message delivery are not yet implemented.
 
 ## 3. Identity and session contract
 
@@ -69,9 +69,15 @@ The first Chat Engine vertical slice uses a versioned browser-local adapter (ven
 - A message is labelled saved_locally only after the browser storage write succeeds.
 - Browser-local data is scoped to that browser profile/device. It is not visible to other players, not backed up by the app, and not synchronized across devices.
 - No authentication, remote API, Supabase client, database write, or production credential is used by this adapter.
-- Storage errors are surfaced while preserving the draft so the user can retry manually. Corrupt-store recovery and a dedicated retry state remain open work.
+- Storage errors are surfaced while preserving the draft; retry reuses the same client request ID. Corrupt or unsupported data is preserved and can be downloaded before an explicitly confirmed reset.
+- Playwright browser tests cover message send, refresh persistence, conversation switching, mobile navigation/composition, and transient storage write failure/retry.
+- localStorage read-modify-write is not a cross-tab transaction. Concurrent tabs can race and overwrite one another; this is acceptable only for the current single-browser preview and must not be treated as a multi-user store.
 
 The local adapter must be replaced or wrapped by a separately reviewed server adapter before any message is represented as delivered or shared with another player. Local storage must never be treated as an authorization boundary or source of trusted sender identity.
+
+## 4.2 Remote persistence contract (draft)
+
+See [Chat persistence contract draft](decisions/0005-chat-persistence-contract.md). The draft is for architecture review only; it is not an approved backend implementation or permission to access Supabase.
 
 ## 5. Logical components
 

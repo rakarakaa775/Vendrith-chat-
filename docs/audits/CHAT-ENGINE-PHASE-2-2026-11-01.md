@@ -51,7 +51,9 @@
 - Added `@playwright/test` and `playwright.config.ts`; Chromium is installed in the Codespaces environment for local headless execution.
 - Added `e2e/chat.spec.ts` coverage for message save + reload persistence + conversation switching, transient local-storage write failure + preserved draft + retry, and mobile viewport navigation/composition.
 - `npm run test:e2e`: 3 passed, 0 failed in Chromium.
-- CI workflow now installs Playwright Chromium and runs browser interaction tests before the production build.
+- CI workflow now installs Playwright Chromium and runs browser interaction tests before the production build. GitHub Actions run #32 (`41304083175`) passed all steps on commit `3dfa9227142a820f806e54c779c2743b3242b304`, including browser interaction tests and production build: https://github.com/rakarakaa775/Vendrith-chat-/actions/runs/41304083175
 - README and roadmap now describe the actual local-only implementation instead of the stale initial-preview status.
+- Architecture documentation now records the real local adapter behavior and its cross-tab limitation. Authentication plan status was corrected to reflect the committed npm lockfile and current implementation gate.
+- Added [Chat Persistence Contract — Draft for Review](../decisions/0005-chat-persistence-contract.md), documenting local adapter limits, server-side identity derivation, idempotency, ordering, authorization, and approval gates. It is explicitly a proposal, not authorization to connect to Supabase or change any database.
 
-**Still open:** GitHub Actions must run against the updated workflow; owner-side Android Chrome verification remains outstanding; the local adapter/server persistence contract still requires review and explicit approval before backend integration. No Supabase or production resources were accessed.
+**Still open:** owner-side Android Chrome verification remains outstanding; the persistence contract draft requires the project owner’s review and approval before backend integration. No Supabase or production resources were accessed.

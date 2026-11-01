@@ -43,7 +43,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Detect corrupt/unsupported local data without overwriting it; offer raw backup download and an explicit-confirmation reset.
 - [x] Test retry after transient storage write failure, corrupt data preservation, schema validation, and reset confirmation.
 - [x] Add Playwright browser tests for send, refresh persistence, conversation switching, mobile navigation, and transient storage failure/retry.
-- [ ] Review local adapter limits and approve the server persistence contract before any backend integration.
+- [ ] Review local adapter limits and approve the server persistence contract before any backend integration. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
 
 **Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner remains open.
 
