@@ -126,3 +126,37 @@ Verification evidence:
 - Supabase security advisors show no findings referencing the new Chat objects. Existing baseline counts remain 78 RLS-without-policy INFO, 54 mutable search_path WARN, 105 public SECURITY DEFINER exposure WARN, and one leaked-password-protection WARN; these are pre-existing and not addressed by this Chat migration.
 
 **Next gate:** authenticated two-player test-account verification and the client/server persistence adapter. No Realtime publication or production integration was enabled.
+
+
+## Email/password Auth and account recovery implementation — 2026-11-01
+
+**Approved target:** Vendrith Non-Production E2E (`npvlokuszipgwrdipeoi`) only.
+**Repository branch:** `main`.
+**Production boundary:** No production Supabase project, Auth configuration, database, or credentials were accessed or changed.
+
+### Findings before implementation
+
+- The existing `/login` page already called `signUp({ email, password })` and `signInWithPassword()`; it did not implement email OTP entry.
+- The registration mode was hidden behind a mode-switch control, and the page did not provide a password-recovery path.
+- The existing callback always redirected to `/`, which made it unsuitable for a password-reset flow.
+- Supabase Auth logs recorded `user_repeated_signup` for the email used in the recent website registration attempt. Supabase intentionally avoids exposing whether an email already exists; a repeated signup therefore must not be treated as proof that a new confirmation email was sent.
+- Account metadata was inspected read-only. No password was read, reset, or changed.
+- Supabase documentation confirms email/password registration uses `signUp({ email, password })`; email delivery depends on Auth email configuration and SMTP. The built-in SMTP service is restricted and best-effort.
+
+### Implemented in the repository
+
+- Clarified the email/password registration and sign-in screens, including a visible password-recovery entry point.
+- Added a resend-confirmation action for a pending signup, without exposing account-existence information.
+- Added `/forgot-password`, using `resetPasswordForEmail()` with a PKCE callback destination.
+- Added `/reset-password`, which requires an authenticated recovery session and uses `updateUser({ password })`.
+- Updated the callback to allow only the internal destinations `/` and `/reset-password`; arbitrary redirect destinations remain rejected.
+- Allowed unauthenticated access to the forgot-password request page while keeping the reset-password completion route protected by the existing session middleware.
+- Added Playwright UI tests for the email/password signup mode and password-recovery request screen.
+
+### Verification status
+
+- Code changes were committed to `main`; GitHub Actions is the next verification gate.
+- Automated UI tests have been added but are not yet confirmed passing in CI.
+- Live signup, confirmation email delivery, resend, password recovery email delivery, callback exchange, password update, and sign-in remain unverified against the hosted Non-Production project.
+- SMTP configuration and the hosted Auth confirmation setting have not been changed. Do not disable email confirmation as a workaround.
+- No account was deleted, recreated, or modified by this implementation.
