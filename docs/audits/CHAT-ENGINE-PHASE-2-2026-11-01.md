@@ -70,3 +70,38 @@
 **Result:** Manual Android Chrome checks for send, refresh persistence, and conversation switching passed. This verifies only same-browser local persistence, not remote delivery, cross-device sync, or multi-user authorization.
 
 **Still open:** project owner review and explicit approval of the persistence contract draft before any backend integration. No Supabase or production database resources were accessed.
+
+
+## Backend preparation — non-production Auth foundation
+
+**Date:** 2026-11-01
+**Approved target:** `Vendrith Non-Production E2E` (`npvlokuszipgwrdipeoi`) only
+**Production boundary:** `ojtmfokjcirvjvhnbnos` was not used for connections, Auth, SQL, schema, or data operations.
+
+### Read-only environment audit
+
+- The approved non-production project is active and runs PostgreSQL 17.11.
+- It is a shared Vendrith E2E environment, not an empty database: 220 public tables and 38 migrations were present at inspection. All 220 public tables had RLS enabled.
+- The existing `profiles` and `users` structures were inspected by metadata only; Vendrith Chat does not alter or own them. Chat identity remains the verified Supabase Auth UUID.
+- Existing Supabase security advisors reported 78 RLS-enabled tables without policies, 54 functions with mutable search paths, 105 authenticated-executable SECURITY DEFINER functions, and leaked-password protection disabled. These are pre-existing WOV/E2E baseline findings, not introduced by Vendrith Chat. They were not modified.
+- Supabase changelog indicates that newly created public tables are no longer automatically exposed through the Data API as of 2026-10-30. Any future Chat table migration must explicitly review grants as well as RLS.
+
+### Code implementation
+
+- Pinned `@supabase/ssr` and `@supabase/supabase-js` and updated the npm lockfile.
+- Added request-scoped browser and server clients, Next.js 15 middleware session refresh, server-side `auth.getClaims()` verification, email/password sign-in and test registration, PKCE callback exchange, and sign-out.
+- Hard-restricted the application to the non-production Supabase hostname and new `sb_publishable_` key format. Wrong-project and partial configuration fail closed; production project hostname smoke test returned HTTP 503.
+- Playwright with the actual non-production URL and publishable key confirmed an unauthenticated visitor is redirected to the non-production sign-in page.
+- Chat UI clearly states that authentication does not yet mean messages are remote: messages remain browser-local until the separate persistence adapter is implemented.
+
+### Verification and open gates
+
+- TypeScript: passed.
+- Unit tests: 19 passed.
+- Existing browser tests: 3 passed.
+- Non-production unauthenticated redirect: passed.
+- Wrong-project guard: HTTP 503 verified with production hostname string; no production connection attempted.
+- Dependency audit: 0 vulnerabilities.
+- Production build: passed.
+- Live test-account sign-in/signup, session refresh, and logout: pending.
+- Chat database migration and remote message RPCs: not yet created or applied. The existing shared E2E database requires a dedicated `chat_` namespace, least-privilege grants, and reviewed membership RLS; do not alter unrelated WOV tables or remediate unrelated baseline advisor findings as part of Chat work.

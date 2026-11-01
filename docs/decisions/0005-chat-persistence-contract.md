@@ -1,14 +1,14 @@
 # Chat Persistence Contract — Draft for Review
 
-**Status:** Draft only — not approved for implementation  
-**Date:** 2026-11-01  
+**Status:** Approved basis for non-production implementation; database schema and migration remain subject to separate review
+**Date:** 2026-11-01
 **Scope:** Replace or wrap the browser-local Chat Engine adapter with a server-backed direct-message adapter in a future, explicitly approved non-production phase.
 
 ## 1. Purpose and boundary
 
 The current Chat Engine is a local-only vertical slice. This document proposes the minimum contract needed to persist direct messages safely without changing World of Vendrith identity ownership or touching production resources.
 
-This draft does not authorize Supabase connection, package installation, migrations, SQL execution, RLS changes, Auth configuration, or data writes. Those require a separate explicit approval.
+The project owner approved this contract as the basis for non-production implementation on 2026-11-01. This approval excludes the production project, production Auth settings, production schema, and production data. A specific database migration still requires code review and verification before it is applied to non-production.
 
 ## 2. Local adapter limitations
 

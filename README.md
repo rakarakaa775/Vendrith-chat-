@@ -9,7 +9,7 @@ Vendrith Chat is the standalone communication service for the World of Vendrith 
 **Default branch:** `main`
 **Primary application language:** English
 
-The preview supports composing messages, saving them in the current browser's local storage, switching conversations, and recovering from transient local-storage write failures. Messages stay on this device. They are not delivered to another player or synchronized across devices.
+The preview supports composing messages, saving them in the current browser's local storage, switching conversations, and recovering from transient local-storage write failures. An optional email/password Auth foundation is now available for the isolated Vendrith Non-Production E2E project only. Even when a test account is authenticated, chat messages remain local to that browser; remote delivery and cross-device synchronization are not implemented.
 
 ## Product direction
 
@@ -44,6 +44,7 @@ Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Te
 - [Security model](docs/SECURITY.md)
 - [Workflow and evidence rules](docs/WORKFLOW.md)
 - [Authentication implementation plan](docs/AUTH-IMPLEMENTATION-PLAN.md)
+- [Identity integration contract](docs/IDENTITY-INTEGRATION.md)
 - [WOV authentication contract recheck](docs/audits/WOV-AUTH-CONTRACT-RECHECK-2026-10-31.md)
 - [Bolt AI implementation handoff](docs/BOLT-AI-HANDOFF.md)
 - [Architecture decisions](docs/decisions/)

@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-01
 **Current phase:** Phase 2 — Chat Engine
-**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine has a tested local-only implementation; automated browser checks and owner Android Chrome checks for send, refresh persistence, and conversation switching have passed.
+**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine has a tested local-only implementation; automated browser checks and owner Android Chrome checks for send, refresh persistence, and conversation switching have passed. Non-production Auth foundation code is implemented, pending live test-account verification.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -44,7 +44,10 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Test retry after transient storage write failure, corrupt data preservation, schema validation, and reset confirmation.
 - [x] Add Playwright browser tests for send, refresh persistence, conversation switching, mobile navigation, and transient storage failure/retry.
 - [x] Verify send, refresh persistence, and conversation switching manually in Android Chrome; owner confirmed the test message remained after refresh and after switching away and back.
-- [ ] Review local adapter limits and approve the server persistence contract before any backend integration. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
+- [x] Approve the chat persistence contract as the basis for non-production backend work; production remains explicitly excluded.
+- [x] Implement non-production-only Supabase Auth SSR clients, middleware claim verification, email/password sign-in/sign-up, PKCE callback, and sign-out.
+- [ ] Verify Auth end-to-end with a dedicated non-production test account, including sign-in, refresh, logout, and email-confirmation callback.
+- [ ] Review the existing E2E database schema and create a separately scoped Chat migration with explicit grants/RLS. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
 
 **Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
 
