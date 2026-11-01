@@ -160,3 +160,10 @@ Verification evidence:
 - Live signup, confirmation email delivery, resend, password recovery email delivery, callback exchange, password update, and sign-in remain unverified against the hosted Non-Production project.
 - SMTP configuration and the hosted Auth confirmation setting have not been changed. Do not disable email confirmation as a workaround.
 - No account was deleted, recreated, or modified by this implementation.
+
+
+### Signup log detail
+
+- The captured website request reached Supabase Auth at `POST /signup` and returned HTTP 200 with the Auth audit action `user_repeated_signup` at `2026-11-01T12:34:38Z`.
+- The request referer recorded by Supabase was `http://localhost:3000`. Confirm that this origin is intentional for the current test deployment and is present in Supabase Auth redirect URL allow-list; the application builds its callback URL from the active browser origin.
+- This event is not evidence that a confirmation email was delivered. No SMTP delivery success was established from the captured Auth log.
