@@ -41,3 +41,17 @@
 1. Verify sending, refresh persistence, switching conversations, retry, and local-storage failure in a real browser.
 2. Add automated UI/browser tests and review the future server persistence contract.
 3. Run GitHub Actions on the synchronized commit.
+
+
+## Follow-up verification — Playwright browser coverage
+
+**Follow-up date:** 2026-11-01
+**Branch:** main (working changes not yet committed at time of this record)
+
+- Added `@playwright/test` and `playwright.config.ts`; Chromium is installed in the Codespaces environment for local headless execution.
+- Added `e2e/chat.spec.ts` coverage for message save + reload persistence + conversation switching, transient local-storage write failure + preserved draft + retry, and mobile viewport navigation/composition.
+- `npm run test:e2e`: 3 passed, 0 failed in Chromium.
+- CI workflow now installs Playwright Chromium and runs browser interaction tests before the production build.
+- README and roadmap now describe the actual local-only implementation instead of the stale initial-preview status.
+
+**Still open:** GitHub Actions must run against the updated workflow; owner-side Android Chrome verification remains outstanding; the local adapter/server persistence contract still requires review and explicit approval before backend integration. No Supabase or production resources were accessed.

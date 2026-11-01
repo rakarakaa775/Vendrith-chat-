@@ -1,14 +1,15 @@
 # Vendrith Chat
 
-Vendrith Chat is the standalone web communication service for the World of Vendrith ecosystem. It is developed in its own repository so chat features can evolve independently before later integration into the larger Vendrith website.
+Vendrith Chat is the standalone communication service for the World of Vendrith ecosystem. It is developed in its own repository so chat features can evolve independently before later integration into the larger Vendrith website.
 
 ## Current status
 
-**Stage:** Foundation implemented and locally verified; GitHub synchronization and real-device browser verification remain pending. English is the primary application language. Authentication and messaging are not yet implemented.
+**Stage:** Phase 2 — Chat Engine. The local-only chat vertical slice is implemented and covered by unit and Playwright browser tests. The app does not yet authenticate players or deliver/synchronize messages through a server.
 **Repository:** `rakarakaa775/Vendrith-chat-`
 **Default branch:** `main`
+**Primary application language:** English
 
-The current application is a design preview with illustrative mock conversations. It does not yet authenticate users, send or persist messages, or connect to a chat database.
+The preview supports composing messages, saving them in the current browser's local storage, switching conversations, and recovering from transient local-storage write failures. Messages stay on this device. They are not delivered to another player or synchronized across devices.
 
 ## Product direction
 
@@ -23,9 +24,9 @@ Friends, groups, media, push notifications, calls, AI chat, and game-world actio
 
 ## Architecture and safety
 
-- Next.js App Router, TypeScript, React, minimal styling.
-- npm lockfile with reproducible `npm ci`; CI checks dependency audit, typecheck, unit tests, and production build.
-- Supabase Auth is the identity authority; verified `user.id` / JWT `sub` is the stable player identity.
+- Next.js App Router, TypeScript, React, and a local-only chat domain adapter for the current vertical slice.
+- npm lockfile with reproducible `npm ci`; CI checks dependency audit, typecheck, unit tests, Playwright browser tests, and production build.
+- Supabase Auth is the intended identity authority; verified `user.id` / JWT `sub` is the stable player identity.
 - Chat owns chat-domain data only. It must not mutate World of Vendrith game data.
 - Production integration, Auth configuration changes, SQL/RLS/migrations, and production data writes require separate explicit approval.
 - Use isolated non-production test identities. Never silently fall back to production.
@@ -46,6 +47,24 @@ Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Te
 - [Bolt AI implementation handoff](docs/BOLT-AI-HANDOFF.md)
 - [Architecture decisions](docs/decisions/)
 - [Foundation verification — 2026-11-01](docs/audits/FOUNDATION-VERIFICATION-2026-11-01.md)
+- [Chat Engine Phase 2 checkpoint — 2026-11-01](docs/audits/CHAT-ENGINE-PHASE-2-2026-11-01.md)
+
+## Local development
+
+```bash
+npm ci
+npm run dev
+```
+
+Run automated checks:
+
+```bash
+npm run typecheck
+npm test
+npx playwright install chromium
+npm run test:e2e
+npm run build
+```
 
 ## Status vocabulary
 
@@ -54,4 +73,4 @@ Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Te
 - **Verified:** acceptance criteria passed with recorded evidence.
 - **Blocked:** progress depends on an unresolved external decision or prerequisite.
 
-A design document or green CI run is not evidence that an end-to-end product feature works.
+A design document or green CI run is not evidence that remote message delivery or end-to-end player communication works.

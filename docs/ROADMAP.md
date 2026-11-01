@@ -42,10 +42,10 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Add a visible pending-save state, failed-save message, and retry action that reuses the same idempotency key.
 - [x] Detect corrupt/unsupported local data without overwriting it; offer raw backup download and an explicit-confirmation reset.
 - [x] Test retry after transient storage write failure, corrupt data preservation, schema validation, and reset confirmation.
-- [ ] Add interactive browser tests for send, refresh, conversation switching, and storage failure.
+- [x] Add Playwright browser tests for send, refresh persistence, conversation switching, mobile navigation, and transient storage failure/retry.
 - [ ] Review local adapter limits and approve the server persistence contract before any backend integration.
 
-**Current verification:** 19 unit tests pass, TypeScript passes, dependency audit reports zero vulnerabilities. Production build compiled and prerendered successfully; a real browser interaction check remains open.
+**Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner remains open.
 
 **Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
 
