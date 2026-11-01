@@ -47,7 +47,9 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Approve the chat persistence contract as the basis for non-production backend work; production remains explicitly excluded.
 - [x] Implement non-production-only Supabase Auth SSR clients, middleware claim verification, email/password sign-in/sign-up, PKCE callback, and sign-out.
 - [ ] Verify Auth end-to-end with a dedicated non-production test account, including sign-in, refresh, logout, and email-confirmation callback.
-- [ ] Review the existing E2E database schema and create a separately scoped Chat migration with explicit grants/RLS. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
+- [x] Review the existing E2E schema and apply the isolated `chat_messaging_core_v1` migration to non-production with explicit grants/RLS.
+- [ ] Implement the browser/server data adapter for Chat RPCs and member-scoped message history.
+- [ ] Test authenticated conversation creation, read isolation, idempotent send, and two-player delivery using dedicated non-production accounts. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
 
 **Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
 

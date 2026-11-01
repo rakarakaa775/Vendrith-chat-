@@ -65,7 +65,8 @@ Values are intentionally blank. Use the non-production project only for isolated
 - Playwright with the real non-production URL and publishable key confirmed unauthenticated `/` redirects to `/login` and shows the non-production test environment label.
 - A separate HTTP smoke check with the canonical production hostname intentionally configured returned `503` and `This deployment is not allowed to connect to that Supabase project.` No request was sent to the production project.
 - Local verification: TypeScript passed; 19 unit tests passed; 3 existing Playwright chat tests passed; dependency audit found 0 vulnerabilities; production build completed.
-- Live password sign-in/signup and session refresh are not yet verified because no dedicated test account has been used. The Auth foundation is code-complete but not runtime-accepted yet.
+- Live password sign-in/signup, session refresh, and logout are not yet verified because no dedicated test account has been used. The Auth foundation is code-complete but not runtime-accepted yet.
+- The `chat_messaging_core_v1` migration is applied to non-production only. A protected `/test-chat` console exercises the authenticated RPCs; it still needs two real non-production test accounts before end-to-end acceptance.
 
 ## Framework-specific implementation note
 

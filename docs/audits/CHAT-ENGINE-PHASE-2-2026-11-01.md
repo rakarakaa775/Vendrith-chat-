@@ -105,3 +105,24 @@
 - Production build: passed.
 - Live test-account sign-in/signup, session refresh, and logout: pending.
 - Chat database migration and remote message RPCs: not yet created or applied. The existing shared E2E database requires a dedicated `chat_` namespace, least-privilege grants, and reviewed membership RLS; do not alter unrelated WOV tables or remediate unrelated baseline advisor findings as part of Chat work.
+
+
+## Non-production Chat schema migration — 2026-11-01
+
+**Target:** `Vendrith Non-Production E2E` (`npvlokuszipgwrdipeoi`) only.
+**Remote migration:** `20261101122649_chat_messaging_core_v1`.
+**Local migration file:** `supabase/migrations/20261101122649_chat_messaging_core_v1.sql`.
+
+The migration created only three `public.chat_*` tables and a non-exposed `chat_private` schema. It did not alter `profiles`, `users`, any World of Vendrith game tables, existing functions, or existing policies.
+
+Verification evidence:
+
+- Remote migration history contains `chat_messaging_core_v1` at version `20261101122649`.
+- `chat_conversations`, `chat_members`, and `chat_messages` all have RLS enabled and one member-scoped SELECT policy each.
+- Column-level SELECT grants are explicit for `authenticated`; no direct INSERT table privilege is granted.
+- `chat_private` usage and function execution are denied to `anon`; authenticated is granted only the required helper execution.
+- Public wrappers `chat_create_direct_conversation` and `chat_send_message` are `SECURITY INVOKER`; private implementation functions are `SECURITY DEFINER` with fixed empty search path.
+- HTTP requests using the publishable key without an authenticated user received 401 for both `GET /rest/v1/chat_messages` and `POST /rest/v1/rpc/chat_send_message`.
+- Supabase security advisors show no findings referencing the new Chat objects. Existing baseline counts remain 78 RLS-without-policy INFO, 54 mutable search_path WARN, 105 public SECURITY DEFINER exposure WARN, and one leaked-password-protection WARN; these are pre-existing and not addressed by this Chat migration.
+
+**Next gate:** authenticated two-player test-account verification and the client/server persistence adapter. No Realtime publication or production integration was enabled.

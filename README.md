@@ -9,7 +9,7 @@ Vendrith Chat is the standalone communication service for the World of Vendrith 
 **Default branch:** `main`
 **Primary application language:** English
 
-The preview supports composing messages, saving them in the current browser's local storage, switching conversations, and recovering from transient local-storage write failures. An optional email/password Auth foundation is now available for the isolated Vendrith Non-Production E2E project only. Even when a test account is authenticated, chat messages remain local to that browser; remote delivery and cross-device synchronization are not implemented.
+The local preview supports composing messages, saving them in the current browser's local storage, switching conversations, and recovering from transient local-storage write failures. An email/password Auth foundation and a separate non-production backend test console are now available for the isolated Vendrith Non-Production E2E project only. The console exercises server-backed direct-conversation creation and message RPCs. The main chat interface is still local-preview mode until authenticated two-player tests pass and the remote adapter is integrated.
 
 ## Product direction
 
@@ -39,7 +39,8 @@ Work proceeds through six sequential roles: Roadmap, Auditor, Implementer, QA Te
 ## Key documents
 
 - [Architecture](docs/ARCHITECTURE.md)
-- [Chat persistence contract draft](docs/decisions/0005-chat-persistence-contract.md)
+- [Chat persistence contract and non-production schema record](docs/decisions/0005-chat-persistence-contract.md)
+- [Supabase local configuration and migrations](supabase/)
 - [Roadmap](docs/ROADMAP.md)
 - [Security model](docs/SECURITY.md)
 - [Workflow and evidence rules](docs/WORKFLOW.md)

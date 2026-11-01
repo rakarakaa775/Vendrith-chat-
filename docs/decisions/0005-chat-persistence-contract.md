@@ -115,3 +115,28 @@ The current local adapter can implement a compatible development-only interface,
 - Confirm the 4,000-character message limit for remote chat.
 - Confirm direct-message membership is the only server-persistence scope for the first iteration; groups/friends remain out of scope.
 - Confirm that the first backend implementation may target only the isolated Vendrith Non-Production E2E project, with no production connection or writes.
+
+
+## Non-production schema implementation record — 2026-11-01
+
+The first direct-message schema migration was reviewed and applied only to `Vendrith Non-Production E2E` (`npvlokuszipgwrdipeoi`). Remote migration version: `20261101122649`, name: `chat_messaging_core_v1`. The production project was not contacted.
+
+Objects created, all owned by Vendrith Chat:
+
+- `public.chat_conversations` — direct conversation pair key, creator, server timestamp.
+- `public.chat_members` — membership rows keyed by conversation and canonical Auth UUID.
+- `public.chat_messages` — server timestamp, verified sender UUID, UUID idempotency key, 4,000-character bounded body.
+- `chat_private` — non-exposed implementation helpers with fixed empty `search_path`.
+- `public.chat_create_direct_conversation` and `public.chat_send_message` — exposed `SECURITY INVOKER` RPC wrappers; privileged implementation functions remain in the non-exposed schema.
+
+Security properties verified after migration:
+
+- RLS is enabled on all three Chat tables, with member-only SELECT policies.
+- Authenticated users have column-scoped SELECT only; no direct table INSERT privilege. Message and membership writes occur through validated RPCs.
+- `anon` has no Chat table read privilege, no private schema usage, and no RPC execution privilege.
+- Authenticated role can execute the two public RPC wrappers; anonymous role cannot.
+- Private `SECURITY DEFINER` functions use `search_path = ''`; public RPC wrappers are `SECURITY INVOKER`.
+- Anonymous HTTP checks returned 401 for both Chat table reads and `chat_send_message` RPC execution.
+- Supabase security advisors reported no new Chat-related findings. Existing WOV/E2E baseline findings remain unchanged and were not modified.
+
+**Not yet verified:** an authenticated test player's direct-conversation creation, cross-member read isolation, send idempotency under retries, and second-player message delivery. These require dedicated non-production test accounts and live authenticated browser/API testing. No realtime publication was enabled.
