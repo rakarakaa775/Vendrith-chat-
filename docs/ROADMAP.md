@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-01
 **Current phase:** Phase 2 — Chat Engine
-**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine has a tested local-only implementation; interactive browser verification remains open.
+**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine has a tested local-only implementation; automated browser checks and owner Android Chrome checks for send, refresh persistence, and conversation switching have passed.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -32,7 +32,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 2 — Chat Engine
 
-**Status: In progress — local-only vertical slice implemented**
+**Status: Local-only vertical slice verified; persistence contract approval remains open**
 
 - [x] Define message validation, stable ordering, cursor pagination, and client idempotency contracts.
 - [x] Implement an injectable local storage adapter with versioned browser storage; no network or Supabase dependency.
@@ -43,9 +43,10 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Detect corrupt/unsupported local data without overwriting it; offer raw backup download and an explicit-confirmation reset.
 - [x] Test retry after transient storage write failure, corrupt data preservation, schema validation, and reset confirmation.
 - [x] Add Playwright browser tests for send, refresh persistence, conversation switching, mobile navigation, and transient storage failure/retry.
+- [x] Verify send, refresh persistence, and conversation switching manually in Android Chrome; owner confirmed the test message remained after refresh and after switching away and back.
 - [ ] Review local adapter limits and approve the server persistence contract before any backend integration. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
 
-**Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner remains open.
+**Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
 
 **Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
 

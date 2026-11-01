@@ -56,4 +56,17 @@
 - Architecture documentation now records the real local adapter behavior and its cross-tab limitation. Authentication plan status was corrected to reflect the committed npm lockfile and current implementation gate.
 - Added [Chat Persistence Contract — Draft for Review](../decisions/0005-chat-persistence-contract.md), documenting local adapter limits, server-side identity derivation, idempotency, ordering, authorization, and approval gates. It is explicitly a proposal, not authorization to connect to Supabase or change any database.
 
-**Still open:** owner-side Android Chrome verification remains outstanding; the persistence contract draft requires the project owner’s review and approval before backend integration. No Supabase or production resources were accessed.
+## Owner verification — Android Chrome
+
+**Date:** 2026-11-01
+**Environment:** Android Chrome, production Vercel deployment `vendrith-chat.vercel.app`
+**Evidence:** Owner-provided screenshots and explicit confirmation in the project conversation.
+
+- Opened the Elaria conversation and sent the message `Halo`; the UI showed `Saved on this device`.
+- Reloaded the page; the `Halo` message remained visible.
+- Switched to another conversation and returned to Elaria; the owner confirmed the `Halo` message was still present.
+- The visible `Local preview mode` notice correctly communicates that messages are only stored in this browser/device and are not delivered to another player or synchronized.
+
+**Result:** Manual Android Chrome checks for send, refresh persistence, and conversation switching passed. This verifies only same-browser local persistence, not remote delivery, cross-device sync, or multi-user authorization.
+
+**Still open:** project owner review and explicit approval of the persistence contract draft before any backend integration. No Supabase or production database resources were accessed.
