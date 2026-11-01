@@ -24,7 +24,10 @@ export async function updateSupabaseSession(request: NextRequest) {
   const { data, error } = await supabase.auth.getClaims();
   const claims = data?.claims;
   const pathname = request.nextUrl.pathname;
-  const isPublicRoute = pathname === "/login" || pathname.startsWith("/auth/");
+  const isPublicRoute =
+    pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith("/auth/");
 
   if (error && error.name !== "AuthSessionMissingError" && !isPublicRoute) {
     return new NextResponse("Authentication could not be verified. Please try again.", { status: 503 });
