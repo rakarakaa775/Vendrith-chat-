@@ -73,6 +73,69 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Subscribe only to the active conversation. Postgres Changes applies the
+  // existing chat_messages SELECT grant and member-only RLS policy per user.
+  useEffect(() => {
+    if (!activeId) return;
+
+    const supabase = createSupabaseBrowserClient();
+    const channel = supabase
+      .channel(`vendrith-chat:${userId}:${activeId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "chat_messages",
+          filter: `conversation_id=eq.${activeId}`
+        },
+        (payload: { new: Message }) => {
+          const incoming = payload.new;
+          if (incoming.conversation_id !== activeId) return;
+
+          setConversations((current) => {
+            const updated = current.map((conversation) => {
+              if (conversation.id !== activeId) return conversation;
+              const messages = [
+                ...conversation.messages.filter((message) => message.id !== incoming.id),
+                incoming
+              ].sort((a, b) =>
+                a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
+              );
+              return { ...conversation, messages: messages.slice(-50) };
+            });
+            return updated.sort((a, b) =>
+              (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(
+                a.messages.at(-1)?.created_at ?? a.created_at
+              )
+            );
+          });
+          setStatus("Live updates connected. New messages arrive automatically.");
+        }
+      )
+      .subscribe((
+        channelStatus: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED",
+        channelError?: Error
+      ) => {
+        if (channelStatus === "SUBSCRIBED") {
+          setError("");
+          setStatus("Live updates connected. Synchronizing recent history…");
+          void loadConversations()
+            .then(() => setStatus("Live updates connected. New messages arrive automatically."))
+            .catch((cause) => setError(cause instanceof Error ? cause.message : "Realtime history sync failed."));
+        } else if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
+          setStatus("Live updates disconnected. Reconnecting…");
+          if (channelError) setError(channelError.message);
+        } else if (channelStatus === "CLOSED") {
+          setStatus("Live updates paused.");
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [activeId, userId, loadConversations]);
+
   async function createConversation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || !recipientId.trim()) return;
@@ -128,6 +191,6 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         {active && <><p className="backend-id">Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
-    <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>History currently loads the latest 50 messages per conversation. Refresh to check for messages from the other player; Realtime is not enabled yet.</small></div>
+    <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
   </main>;
 }
