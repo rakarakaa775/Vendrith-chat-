@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "../lib/supabase/browser";
+import { mergeRealtimeMessage } from "../lib/realtime-messages.mjs";
 
 type Message = {
   id: string;
@@ -96,13 +97,8 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
           setConversations((current) => {
             const updated = current.map((conversation) => {
               if (conversation.id !== activeId) return conversation;
-              const messages = [
-                ...conversation.messages.filter((message) => message.id !== incoming.id),
-                incoming
-              ].sort((a, b) =>
-                a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)
-              );
-              return { ...conversation, messages: messages.slice(-50) };
+              const messages = mergeRealtimeMessage(conversation.messages, incoming, 50);
+              return { ...conversation, messages };
             });
             return updated.sort((a, b) =>
               (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(
