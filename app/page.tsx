@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "../lib/supabase/server";
 import { getSupabaseConfig } from "../lib/supabase/config";
 import ChatPreview from "./chat-preview";
+import ServerChat from "./server-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +16,5 @@ export default async function Home() {
   const claims = data?.claims;
   if (error || !claims?.sub) return <main className="auth-status"><h1>Authentication required</h1><p>Please sign in to the non-production test environment.</p><a href="/login">Continue to sign in</a></main>;
 
-  return <ChatPreview authenticatedLabel={typeof claims.email === "string" ? claims.email : "Verified test player"} />;
+  return <ServerChat userId={claims.sub} email={typeof claims.email === "string" ? claims.email : undefined} />;
 }

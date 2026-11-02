@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-01
 **Current phase:** Phase 2 — Chat Engine
-**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine has a tested local-only implementation; automated browser checks and owner Android Chrome checks for send, refresh persistence, and conversation switching have passed. Non-production Auth foundation code is implemented, pending live test-account verification.
+**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine and authenticated main-route server-chat UI are implemented on `feat/chat-engine-server-ui`; typecheck, unit tests, local-preview browser tests, dependency audit, and production build pass. Live Auth and authenticated two-player database verification remain pending.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -32,7 +32,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 2 — Chat Engine
 
-**Status: Local-only vertical slice verified; persistence contract approval remains open**
+**Status: Local engine and authenticated server-chat UI implemented; live non-production verification remains open**
 
 - [x] Define message validation, stable ordering, cursor pagination, and client idempotency contracts.
 - [x] Implement an injectable local storage adapter with versioned browser storage; no network or Supabase dependency.
@@ -48,10 +48,10 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Implement non-production-only Supabase Auth SSR clients, middleware claim verification, email/password sign-in/sign-up, PKCE callback, and sign-out.
 - [ ] Verify Auth end-to-end with a dedicated non-production test account, including sign-in, refresh, logout, and email-confirmation callback.
 - [x] Review the existing E2E schema and apply the isolated `chat_messaging_core_v1` migration to non-production with explicit grants/RLS.
-- [ ] Implement the browser/server data adapter for Chat RPCs and member-scoped message history.
+- [x] Implement the authenticated main Chat UI against Chat RPCs and member-scoped message history; latest 50 messages per conversation are loaded with manual refresh (live Auth/database verification remains pending).
 - [ ] Test authenticated conversation creation, read isolation, idempotent send, and two-player delivery using dedicated non-production accounts. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
 
-**Current verification:** 19 unit tests pass; Playwright Chromium browser tests cover desktop send/refresh/switching, mobile navigation/composition, and transient storage failure/retry; TypeScript passes; dependency audit reports zero vulnerabilities; production build compiles and prerenders. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
+**Current verification (2026-11-02):** 19 unit tests pass; Playwright local-preview tests pass (5 passed, 1 non-production Auth test skipped without explicit test configuration); TypeScript and production build pass; `npm audit --audit-level=low` reports zero vulnerabilities. The authenticated server-chat UI is wired into the main route, but the browser tests do not yet exercise live Supabase conversations. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
 
 **Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
 
