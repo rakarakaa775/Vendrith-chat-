@@ -12,10 +12,14 @@ type Message = {
   body: string;
   created_at: string;
 };
+type ConversationMember = { user_id: string; role: string; username: string; display_name: string };
 type Conversation = {
   id: string;
+  kind: "direct" | "group";
+  title: string | null;
   created_at: string;
   otherUserId: string;
+  members: ConversationMember[];
   messages: Message[];
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
@@ -40,20 +44,34 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     if (!ids.length) {
       setConversations([]); setActiveId(""); setStatus("No conversations yet. Start one using another test player's Auth UUID."); return;
     }
+    const { data: profileRows, error: profileError } = await supabase.rpc("chat_get_conversation_profiles", {
+      p_conversation_ids: ids
+    });
+    if (profileError) throw profileError;
+    const profiles = new Map(((profileRows ?? []) as { conversation_id: string; user_id: string; username: string; display_name: string }[])
+      .map((profile) => [`${profile.conversation_id}:${profile.user_id}`, profile]));
+
     const rows = await Promise.all(ids.map(async (id) => {
       const [conversationResult, memberResult, messageResult] = await Promise.all([
-        supabase.from("chat_conversations").select("id,created_at").eq("id", id).single(),
-        supabase.from("chat_members").select("user_id").eq("conversation_id", id),
+        supabase.from("chat_conversations").select("id,kind,title,created_at").eq("id", id).single(),
+        supabase.from("chat_members").select("user_id,role").eq("conversation_id", id),
         supabase.from("chat_messages").select("id,conversation_id,sender_id,client_message_id,body,created_at").eq("conversation_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(50)
       ]);
       if (conversationResult.error) throw conversationResult.error;
       if (memberResult.error) throw memberResult.error;
       if (messageResult.error) throw messageResult.error;
-      const other = (memberResult.data ?? []).find((member: { user_id: string }) => member.user_id !== userId);
+      const members = ((memberResult.data ?? []) as { user_id: string; role: string }[]).map((member) => {
+        const profile = profiles.get(`${id}:${member.user_id}`);
+        return { ...member, username: profile?.username ?? "player", display_name: profile?.display_name ?? `Player ${member.user_id.slice(0, 8)}` };
+      });
+      const other = members.find((member) => member.user_id !== userId);
       return {
         id: conversationResult.data.id,
+        kind: conversationResult.data.kind as "direct" | "group",
+        title: conversationResult.data.title ?? null,
         created_at: conversationResult.data.created_at,
         otherUserId: other?.user_id ?? "unknown",
+        members,
         messages: ((messageResult.data ?? []) as Message[]).reverse()
       };
     }));
@@ -182,9 +200,9 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <section className="backend-identity"><strong>{email ?? "Verified test player"}</strong><code>{userId}</code><span>Verified Supabase Auth identity · Non-production only</span></section>
     <section className="backend-create"><h2>Start a direct conversation</h2><form onSubmit={createConversation}><input aria-label="Recipient player UUID" placeholder="Other test player's Auth UUID" value={recipientId} onChange={(event) => setRecipientId(event.target.value)} /><button disabled={busy || !recipientId.trim()}>Create / open</button></form></section>
     <div className="backend-columns">
-      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>Player {conversation.otherUserId.slice(0, 8)}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small></button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
-      <section className="backend-thread"><h2>{active ? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><p className="backend-id">Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small></button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
+      <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
+        {active && <><p className="backend-id">Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
