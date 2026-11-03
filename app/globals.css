@@ -127,3 +127,8 @@
 .backend-load-older { display: block; margin: 0 auto .9rem; padding: .55rem .9rem; border: 1px solid var(--border, #30303a); border-radius: 999px; background: transparent; color: inherit; cursor: pointer; }
 .backend-thread-tools { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .backend-thread-tools > button { flex: 0 0 auto; }
+
+.message-reactions { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem; }
+.message-reactions button { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .45rem; border: 1px solid var(--border, #30303a); border-radius: 999px; background: transparent; color: inherit; font-size: .82rem; cursor: pointer; }
+.message-reactions button.selected { border-color: var(--accent, #6d5dfc); background: color-mix(in srgb, var(--accent, #6d5dfc) 16%, transparent); }
+.message-reactions button span { font-size: .72rem; opacity: .8; }
