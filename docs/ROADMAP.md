@@ -73,7 +73,7 @@
 - [x] Block relationship schema and block/unblock RPCs.
 - [x] Group conversation, membership, role, reporting, and moderation schema/RPCs; invitation/join-link flow remains open.
 - [x] Notification preference and in-app notification persistence.
-- [ ] Private attachment metadata and storage authorization design.
+- [x] Private attachment metadata and storage authorization design implemented in Non-Production.
 
 ## Phase 5 — Realtime
 **Status:** Message realtime implementation exists; social presence and event coverage remain.
@@ -103,8 +103,8 @@
 ## Phase 7 — Media & Advanced Features
 **Status:** Notifications, reactions, replies, message edit/delete, and inbox are implemented; private media/storage, pinned messages, accessibility, and localization remain.
 - [ ] Private image/file upload and download.
-- [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
-- [ ] Attachment access restricted to active conversation members.
+- [x] MIME allow-list, 10 MB per-file limit, generated storage paths, 100 MB account quota, and 25 MB daily upload quota enforced before upload.
+- [x] Private Storage reads restricted by RLS to members of the owning conversation; uploads require a short-lived pending metadata authorization.
 - [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers cover incoming messages, friend requests, group additions, and moderator report alerts.
 - [x] Notification read/unread state, inbox controls, and realtime inbox refresh; [x] message/group and friend-request notification deep links.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
