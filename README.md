@@ -4,12 +4,12 @@ Vendrith Chat is the standalone communication service for the World of Vendrith 
 
 ## Current status
 
-**Stage:** Implementation-first roadmap. Email/password authentication, server-backed direct messaging, realtime message delivery, social graph RPCs, profile/privacy controls, and group management interfaces are implemented in the isolated Non-Production environment. All test execution and QA are intentionally deferred until the roadmap implementation phases are complete.
+**Stage:** Implementation-first roadmap. Email/password authentication, server-backed messaging, realtime inbox updates, unread/read state, per-user archive, reactions/replies, social graph, profile/privacy controls, group lifecycle/moderation, and in-app notifications are implemented in the isolated Non-Production environment. All test execution and QA are intentionally deferred until the roadmap implementation phases are complete.
 **Repository:** `rakarakaa775/Vendrith-chat-`
 **Default branch:** `main`
 **Primary application language:** English
 
-The app provides a local preview when backend configuration is absent and an authenticated server-backed chat experience when configured for Vendrith Non-Production E2E. The main chat includes direct conversations and group conversations, with a separate Community route for player discovery, friend requests, blocks, presence privacy, profile management, and group member roles. These implementation statements do not mean the deferred final QA/release gates have passed.
+The app provides a local preview when backend configuration is absent and an authenticated server-backed chat experience when configured for Vendrith Non-Production E2E. The main chat includes direct and group conversations, cursor-based history, unread counters, per-user archive, reactions, replies, and live conversation previews. Community includes player discovery, friend requests, blocks, presence privacy, profile management, group metadata, ownership transfer, closure, member roles, and moderation history. A private notification inbox provides per-category preferences and realtime updates. These implementation statements do not mean the deferred final QA/release gates have passed.
 
 ## Product direction
 
@@ -18,7 +18,7 @@ The MVP targets:
 - Protected responsive chat shell with direct and group conversations.
 - Secure membership-scoped message history and sending.
 - Player discovery, friendships, blocks, presence privacy, and group role management.
-- Private media and in-app notifications in later implementation phases.
+- Private media/file attachments remain planned; in-app notifications and preferences are implemented for message, friend-request, group-addition, and moderation-report events.
 - Final automated authorization, messaging, and release tests after all implementation work is complete.
 
 Voice/video, AI chat, public global channels, and game-world mutation remain out of scope unless separately approved.
