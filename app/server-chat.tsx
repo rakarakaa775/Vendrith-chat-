@@ -147,10 +147,10 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     void createSupabaseBrowserClient().from("chat_message_reactions")
       .select("id,message_id,user_id,emoji")
       .eq("conversation_id", activeId)
-      .then(({ data, error: reactionError }) => {
+      .then((result: { data: unknown[] | null; error: { message: string } | null }) => {
         if (cancelled) return;
-        if (reactionError) setError(reactionError.message);
-        else setReactions((data ?? []) as Reaction[]);
+        if (result.error) setError(result.error.message);
+        else setReactions((result.data ?? []) as Reaction[]);
       });
     return () => { cancelled = true; };
   }, [activeId]);
