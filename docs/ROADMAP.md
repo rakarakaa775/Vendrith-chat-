@@ -26,13 +26,13 @@
 - Realtime publication migration for chat messages and client subscription/recovery logic.
 - Local preview remains available without backend configuration; authenticated main route uses the server-backed chat component.
 
-### Product capabilities still to implement
-- Social graph: player discovery, friend requests, accept/reject/cancel/remove, blocks/unblock, and relationship-aware direct messaging.
-- Chat-owned profile presentation and preferences, preserving canonical Auth identity.
-- Presence and privacy controls.
-- Group conversations, member lifecycle, roles, and moderation permissions.
-- Media attachments and in-app notifications/preferences.
-- Operational controls, retention workflows, and production integration package.
+### Remaining product capabilities
+- Private media/file attachments, storage authorization, quotas, and abuse controls.
+- Account/session settings and device/session management.
+- Group invitation/join flow, avatar upload, and deletion policy.
+- Friend-request preference controls and app-wide presence/reconnect improvements.
+- Notification deep links and external push evaluation.
+- Pinned messages, accessibility/localization, retention/export, observability, and production integration package.
 
 ## Phase 1 — Foundation
 **Status:** Existing foundation retained.
@@ -48,8 +48,8 @@
 - [x] Supabase-backed direct-message UI on authenticated main route.
 - [x] Conversation creation and message-send RPC integration.
 - [x] Server-backed history loading and bounded recent-message retrieval.
-- [x] Realtime message subscription, deduplication, and history refresh behavior.
-- [x] Member-scoped unread counts and server-authoritative read receipts; product-level pagination and archive/close lifecycle controls remain open.
+- [x] Realtime message subscriptions across visible conversations, deduplication, and persisted history pagination.
+- [x] Cursor-based 50-message history pagination, member-scoped unread/read state, per-user archive/restore, and owner-controlled group closure.
 - [ ] Consolidate local preview and authenticated remote modes behind a stable domain interface.
 
 ## Phase 3 — Authentication & Identity
@@ -78,7 +78,7 @@
 ## Phase 5 — Realtime
 **Status:** Message realtime implementation exists; social presence and event coverage remain.
 - [x] Realtime publication for persisted chat messages in Non-Production.
-- [x] Subscribe to active conversation and reconcile incoming messages.
+- [x] Subscribe to all visible conversations and reconcile incoming messages.
 - [x] Refresh persisted history after subscription and clean up subscriptions on navigation.
 - [x] Realtime latest-message previews and unread badge updates across all visible conversations; newly created conversations still refresh through the standard list reload.
 - [ ] Realtime events for friend requests and relationship changes.
@@ -96,9 +96,9 @@
 - [x] Group creation with friend selection, leave, add member, and member removal controls; invitations and join flow remain open.
 - [x] Group role management controls for owner/admin/moderator/member, backed by server-side RPC permissions.
 - [x] Admin/moderator management controls and owner-initiated ownership transfer; [x] role-restricted audit-history presentation.
-- [x] Group rename and description metadata; [ ] avatar upload, close/archive, and deletion policy.
+- [x] Group rename/description, owner transfer, and owner-controlled close; [ ] avatar upload and deletion policy.
 - [x] Backend group report workflow and append-only moderation event table.
-- [x] Community moderation report submission, report review, dismiss, and member-removal controls; audit-history presentation remains open.
+- [x] Community moderation report submission, report review, dismiss/member-removal controls, and role-restricted audit-history presentation.
 
 ## Phase 7 — Media & Advanced Features
 **Status:** Planned after social foundation.
@@ -106,9 +106,9 @@
 - [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
 - [ ] Attachment access restricted to active conversation members.
 - [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers cover incoming messages, friend requests, group additions, and moderator report alerts.
-- [x] Notification read/unread state and inbox controls; [ ] event-specific deep links; [x] realtime inbox refresh.
+- [x] Notification read/unread state, inbox controls, and realtime inbox refresh; [ ] event-specific deep links.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
-- [x] Persisted message reactions (six allowed emoji); [ ] reply context, edit/delete policy, and pinned messages.
+- [x] Persisted message reactions, same-conversation reply context, and author-only 15-minute edit/soft-delete; [ ] pinned messages.
 - [ ] Accessibility and localization foundations.
 
 ## Phase 8 — Security, Operations & Production Preparation
@@ -117,7 +117,7 @@
 - [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
 - [ ] Data retention, account deletion/export, backup/restore, and recovery procedures.
 - [ ] Operational logging, error reporting, observability, and incident response.
-- [ ] Performance and pagination improvements for large conversations and groups; message history still loads a bounded latest window without cursor pagination.
+- [x] Cursor-based 50-message history pagination; [ ] large-group pagination and broader performance tuning.
 - [ ] Deployment configuration and environment separation documentation.
 - [ ] Production integration plan for shared World of Vendrith identity, requiring separate explicit approval.
 
@@ -147,14 +147,14 @@ Only after Phases 1–8 implementation work is complete:
 ### Implementation update — 2026-11-03
 - [x] Added per-membership `last_read_at` state and authenticated RPCs `chat_mark_conversation_read` / `chat_list_unread_counts` in Non-Production.
 - [x] Chat client now records a read receipt when a conversation becomes active and displays server-calculated unread counts in the conversation list.
-- [ ] Conversation pagination, archive/close lifecycle, notification persistence, and realtime conversation-list updates remain implementation work.
+- [x] Conversation pagination, archive/restore lifecycle, group closure, notification persistence, and realtime conversation-list updates have implementation code; final acceptance remains deferred.
 - [ ] No tests or QA were run as requested; this is implementation progress, not a verification claim.
 
 - [x] Added per-member archive state so archiving hides a conversation only for the current player; other members retain their conversation and history.
 
 - [x] Added authenticated `/notifications` inbox, mark-read/mark-all-read actions, and per-category preference controls.
 - [x] Database triggers create private inbox notifications for incoming messages and new friend requests; archived conversations suppress new-message notifications for that member.
-- [ ] Add group membership/moderation event triggers and realtime inbox updates; external push remains deferred pending provider/privacy/cost approval.
+- [x] Added group membership/moderation event triggers and realtime inbox updates; external push remains deferred pending provider/privacy/cost approval.
 
 - [x] Added cursor-based loading of older messages in 50-message pages while retaining the latest-message window.
 
