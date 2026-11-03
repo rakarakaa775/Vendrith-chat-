@@ -49,7 +49,7 @@
 - [x] Conversation creation and message-send RPC integration.
 - [x] Server-backed history loading and bounded recent-message retrieval.
 - [x] Realtime message subscription, deduplication, and history refresh behavior.
-- [ ] Product-level conversation pagination, unread/read state, and lifecycle controls.
+- [x] Member-scoped unread counts and server-authoritative read receipts; product-level pagination and archive/close lifecycle controls remain open.
 - [ ] Consolidate local preview and authenticated remote modes behind a stable domain interface.
 
 ## Phase 3 — Authentication & Identity
@@ -117,7 +117,7 @@
 - [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
 - [ ] Data retention, account deletion/export, backup/restore, and recovery procedures.
 - [ ] Operational logging, error reporting, observability, and incident response.
-- [ ] Performance and pagination improvements for large conversations and groups.
+- [ ] Performance and pagination improvements for large conversations and groups; message history still loads a bounded latest window without cursor pagination.
 - [ ] Deployment configuration and environment separation documentation.
 - [ ] Production integration plan for shared World of Vendrith identity, requiring separate explicit approval.
 
@@ -142,3 +142,10 @@ Only after Phases 1–8 implementation work is complete:
 - No production Auth settings, SQL, migrations, RLS changes, storage buckets, or data writes without separate explicit approval.
 - No changes to World of Vendrith game data or its sign-up flow as part of Chat work.
 - Never claim end-to-end functionality based only on implementation code or a successful build.
+
+
+### Implementation update — 2026-11-03
+- [x] Added per-membership `last_read_at` state and authenticated RPCs `chat_mark_conversation_read` / `chat_list_unread_counts` in Non-Production.
+- [x] Chat client now records a read receipt when a conversation becomes active and displays server-calculated unread counts in the conversation list.
+- [ ] Conversation pagination, archive/close lifecycle, notification persistence, and realtime conversation-list updates remain implementation work.
+- [ ] No tests or QA were run as requested; this is implementation progress, not a verification claim.
