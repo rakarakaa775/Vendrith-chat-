@@ -123,7 +123,7 @@
 
 ## Repository/database migration reconciliation
 
-- [ ] Reconstruct and commit the already-applied Non-Production social, profile, presence, group, and moderation migrations missing from the repository migration folder.
+- [ ] Reconstruct and commit the nine already-applied Non-Production migrations still missing from the repository: `20261103032402`, `20261103032544`, `20261103034300`, `20261103035600`, `20261103040851`, `20261103045533`, `20261103045720`, `20261103051345`, and `20261103051548`.
 - [ ] Ensure future clean environment setup can reproduce the Non-Production Chat schema without reapplying migrations to the existing Non-Production database.
 
 ## Final deferred verification phase
@@ -179,3 +179,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added a separate archived conversation view and per-user restore action; reopening a direct conversation automatically restores it for the initiating player.
 
 - [x] Added server-enforced 15-minute author-only edit and soft-delete operations; deletion retains a placeholder and preserves the conversation timeline.
+
+- [x] Reconciled the filenames of all newly added migrations against the exact versions recorded by the Non-Production database; no existing migration was reapplied. Nine earlier social/group migration source files remain absent and are explicitly tracked above.
