@@ -108,7 +108,7 @@
 - [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers currently cover incoming messages and friend requests.
 - [x] Notification read/unread state and inbox controls; [ ] event-specific deep links and realtime inbox refresh.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
-- [ ] Message reactions, reply context, edit/delete policy, and pinned messages.
+- [x] Persisted message reactions (six allowed emoji); [ ] reply context, edit/delete policy, and pinned messages.
 - [ ] Accessibility and localization foundations.
 
 ## Phase 8 — Security, Operations & Production Preparation
@@ -157,3 +157,5 @@ Only after Phases 1–8 implementation work is complete:
 - [ ] Add group membership/moderation event triggers and realtime inbox updates; external push remains deferred pending provider/privacy/cost approval.
 
 - [x] Added cursor-based loading of older messages in 50-message pages while retaining the latest-message window.
+
+- [x] Added per-message reactions with server-side membership authorization and a fixed emoji allow-list.
