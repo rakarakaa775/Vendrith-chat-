@@ -98,7 +98,7 @@
 - [ ] Admin/moderator management polish and safe ownership transfer.
 - [ ] Group rename, description, avatar metadata, close/archive, and deletion policy.
 - [x] Backend group report workflow and append-only moderation event table.
-- [ ] Community moderation review UI and audit-history presentation.
+- [x] Community moderation report submission, report review, dismiss, and member-removal controls; audit-history presentation remains open.
 
 ## Phase 7 — Media & Advanced Features
 **Status:** Planned after social foundation.
