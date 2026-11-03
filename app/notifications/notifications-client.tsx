@@ -83,7 +83,7 @@ export default function NotificationsClient({ userId }: { userId: string }) {
       <div className="notification-inbox-title"><h2>Inbox</h2><button type="button" disabled={busy || unread === 0} onClick={() => void markRead()}>Mark all read</button></div>
       {items.map((item) => <article key={item.id} className={item.read_at ? "notification-item" : "notification-item unread"}>
         <div><span className="notification-category">{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{new Date(item.created_at).toLocaleString()}</small></div>
-        <div className="notification-actions">{!item.read_at && <button type="button" disabled={busy} onClick={() => void markRead(item.id)}>Mark read</button>}{item.conversation_id && <a href="/">Open chat</a>}</div>
+        <div className="notification-actions">{!item.read_at && <button type="button" disabled={busy} onClick={() => void markRead(item.id)}>Mark read</button>}{item.conversation_id && <a href={item.category === "friends" ? "/community?tab=requests" : item.conversation_id ? `/?conversation=${item.conversation_id}` : "/"}>{item.category === "friends" ? "Open requests" : "Open chat"}</a>}</div>
       </article>)}
       {!items.length && <p className="notification-empty">You’re all caught up. New friend requests and incoming messages will appear here.</p>}
     </section>
