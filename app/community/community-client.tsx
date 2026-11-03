@@ -111,6 +111,8 @@ export default function CommunityClient({ userId }: { userId: string }) {
   }, [supabase]);
 
   useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab === "requests") setTab("requests");
     void refresh().catch((cause) => {
       setError(cause instanceof Error ? cause.message : "Could not load community data.");
       setNotice("Community data could not be loaded.");
