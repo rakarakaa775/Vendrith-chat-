@@ -67,6 +67,7 @@
 - [x] RLS and least-privilege grants for direct-message reads and RPC writes.
 - [x] Server-derived sender identity, bounded message body, and idempotency key.
 - [x] Non-Production rate-limit ledger and enforcement.
+- [x] Social graph, profile, presence, group, report, and moderation database objects/RPCs are present in Non-Production; their migration files still need reconciliation into Git.
 - [ ] Chat-owned player profile table and preferences.
 - [ ] Friend relationship/request schema and state-transition RPCs.
 - [ ] Block relationship schema and block/unblock RPCs.
@@ -96,7 +97,8 @@
 - [x] Group role management controls for owner/admin/moderator/member, backed by server-side RPC permissions.
 - [ ] Admin/moderator management polish and safe ownership transfer.
 - [ ] Group rename, description, avatar metadata, close/archive, and deletion policy.
-- [ ] Community moderation actions and audit trail for privileged actions.
+- [x] Backend group report workflow and append-only moderation event table.
+- [ ] Community moderation review UI and audit-history presentation.
 
 ## Phase 7 — Media & Advanced Features
 **Status:** Planned after social foundation.
@@ -118,6 +120,11 @@
 - [ ] Performance and pagination improvements for large conversations and groups.
 - [ ] Deployment configuration and environment separation documentation.
 - [ ] Production integration plan for shared World of Vendrith identity, requiring separate explicit approval.
+
+## Repository/database migration reconciliation
+
+- [ ] Reconstruct and commit the already-applied Non-Production social, profile, presence, group, and moderation migrations missing from the repository migration folder.
+- [ ] Ensure future clean environment setup can reproduce the Non-Production Chat schema without reapplying migrations to the existing Non-Production database.
 
 ## Final deferred verification phase
 
