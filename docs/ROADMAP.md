@@ -106,7 +106,7 @@
 - [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
 - [ ] Attachment access restricted to active conversation members.
 - [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers cover incoming messages, friend requests, group additions, and moderator report alerts.
-- [x] Notification read/unread state, inbox controls, and realtime inbox refresh; [ ] event-specific deep links.
+- [x] Notification read/unread state, inbox controls, and realtime inbox refresh; [x] message/group and friend-request notification deep links.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
 - [x] Persisted message reactions, same-conversation reply context, and author-only 15-minute edit/soft-delete; [ ] pinned messages.
 - [ ] Accessibility and localization foundations.
