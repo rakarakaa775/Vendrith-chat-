@@ -167,3 +167,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added a private Realtime subscription filtered to the authenticated user’s notification rows.
 
 - [x] Expanded realtime subscriptions from only the active thread to all visible conversations, with duplicate-safe unread increments.
+
+- [x] Added server-authorized replies restricted to parent messages in the same conversation, plus quoted context in the thread.
