@@ -69,6 +69,28 @@ export default function CommunityClient({ userId }: { userId: string }) {
     return () => { active = false; };
   }, [refresh]);
 
+  // Re-sync friends, requests, blocks, and profile changes when returning to this tab.
+  // Focus and visibility can fire together on mobile, so coalesce duplicate refreshes.
+  useEffect(() => {
+    let lastAutoRefreshAt = 0;
+    const refreshWhenActive = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastAutoRefreshAt < 1_500) return;
+      lastAutoRefreshAt = now;
+      void refresh().catch((cause) => {
+        setError(cause instanceof Error ? cause.message : "Could not refresh community data.");
+        setStatus("Community data could not be refreshed.");
+      });
+    };
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+    return () => {
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [refresh]);
+
   const searchUsers = useCallback(async (query: string) => {
     const { data, error: searchError } = await createSupabaseBrowserClient().rpc("chat_search_users", { p_query: query, p_limit: 20 });
     if (searchError) throw searchError;
