@@ -57,7 +57,7 @@
 - [x] Supabase Auth email/password registration and sign-in UI.
 - [x] SSR clients, middleware, protected route, callback, sign-out, and password reset routes.
 - [x] Verified Auth UUID / JWT subject as canonical player identity.
-- [ ] Account/session settings UI and session/device management.
+- [x] Account settings UI, password change, current-session details, and sign-out-other-sessions; [ ] full device/session enumeration requires a server-authorized management API.
 - [x] Chat-owned display profile editor with server-side profile upsert and presence privacy controls; editable profile fields are presentation-only.
 - [ ] Document identity handoff for eventual World of Vendrith integration; production connection remains prohibited.
 
@@ -183,3 +183,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Reconciled the filenames of all newly added migrations against the exact versions recorded by the Non-Production database; no existing migration was reapplied. Nine earlier social/group migration source files remain absent and are explicitly tracked above.
 
 - [x] Hardened moderation notifications so the reporter’s identity is not exposed to group moderators through notification actor metadata.
+
+- [x] Added `/settings/account` with password update, current session expiry display, and sign-out-other-sessions action.
