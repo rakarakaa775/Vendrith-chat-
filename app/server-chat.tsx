@@ -26,6 +26,7 @@ type Conversation = {
   hasMore: boolean;
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
+type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
 
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -38,6 +39,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Loading your server conversations…");
   const [failedRequest, setFailedRequest] = useState<PendingMessage | null>(null);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
 
   const loadConversations = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
@@ -117,6 +119,31 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     });
     return () => { cancelled = true; };
   }, [activeId]);
+
+  useEffect(() => {
+    if (!activeId) { setReactions([]); return; }
+    let cancelled = false;
+    void createSupabaseBrowserClient().from("chat_message_reactions")
+      .select("id,message_id,user_id,emoji")
+      .eq("conversation_id", activeId)
+      .then(({ data, error: reactionError }) => {
+        if (cancelled) return;
+        if (reactionError) setError(reactionError.message);
+        else setReactions((data ?? []) as Reaction[]);
+      });
+    return () => { cancelled = true; };
+  }, [activeId]);
+
+  async function toggleReaction(messageId: string, emoji: string) {
+    const { error: reactionError } = await createSupabaseBrowserClient().rpc("chat_toggle_message_reaction", {
+      p_message_id: messageId, p_emoji: emoji
+    });
+    if (reactionError) { setError(reactionError.message); return; }
+    const { data, error: refreshError } = await createSupabaseBrowserClient().from("chat_message_reactions")
+      .select("id,message_id,user_id,emoji").eq("conversation_id", activeId);
+    if (refreshError) setError(refreshError.message);
+    else setReactions((data ?? []) as Reaction[]);
+  }
 
   // Subscribe only to the active conversation. Postgres Changes applies the
   // existing chat_messages SELECT grant and member-only RLS policy per user.
@@ -274,7 +301,18 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <div className="backend-columns">
       <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
+          const messageReactions = reactions.filter((reaction) => reaction.message_id === message.id);
+          return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
+            <p>{message.body}</p>
+            <small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small>
+            <div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
+              const matching = messageReactions.filter((reaction) => reaction.emoji === emoji);
+              const selected = matching.some((reaction) => reaction.user_id === userId);
+              return <button type="button" key={emoji} className={selected ? "selected" : ""} aria-label={`React with ${emoji}`} onClick={() => void toggleReaction(message.id, emoji)}>{emoji}{matching.length > 0 && <span>{matching.length}</span>}</button>;
+            })}</div>
+          </article>;
+        })}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
