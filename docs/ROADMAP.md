@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-03
 **Current phase:** Phase 6 — Social & Community
-**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on `feat/chat-engine-server-ui`. The owner has manually verified that current profile labels display correctly and existing conversation history remains intact. Full social-flow browser acceptance, authenticated social E2E, presence, groups, and moderation remain open.
+**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on feat/chat-engine-server-ui. The owner has manually verified current profile labels and history preservation. Friend-only expiring Presence and privacy controls are implemented in Non-Production; two-account browser acceptance, full social-flow E2E, groups, and moderation remain open.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -93,7 +93,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 6 — Social & Community
 
-**Status: P0 social graph backend and authenticated UI implemented; browser acceptance pending**
+**Status: P0 social graph, profile display, and friend-only Presence implemented; browser acceptance pending**
 
 - [x] Opt-in player profiles and limited-field player search.
 - [x] Friend requests, accept/decline/cancel/remove, and block/unblock.
@@ -101,11 +101,11 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Add authenticated Friends & Community route with profile, search, request, friend, and block management.
 - [x] Resolve current display names and @usernames in existing conversation lists and thread headers through a membership-scoped RPC; refresh labels when the chat regains focus.
 - [ ] Complete live browser acceptance with two real Non-Production accounts and automated authenticated social-flow E2E.
-- [ ] Presence with expiry and privacy controls.
+- [x] Implement friend-only Presence with 90-second expiry, privacy controls, and membership/block authorization; browser acceptance remains pending.
 - [ ] Group conversations, membership lifecycle, and admin/moderator role permissions.
 - [ ] Reporting and moderation workflows.
 
-**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md) and [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md).
+**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md), [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md), and [Friend Presence Implementation — 2026-11-03](audits/FRIEND-PRESENCE-IMPLEMENTATION-2026-11-03.md).
 
 **Exit criteria:** relationship transitions and privacy tests pass in both transactional database verification and authenticated browser flows; group authorization tests pass before Phase 6 is closed.
 

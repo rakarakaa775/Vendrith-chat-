@@ -55,3 +55,5 @@
 .server-chat-actions a{border:1px solid #49634f;border-radius:8px;padding:8px 12px;background:#20382d;color:#d9ebd6;font-size:11px;text-decoration:none}
 @media(max-width:720px){.community-header{display:grid}.community-nav{width:100%}.community-nav a,.community-nav button{flex:1;text-align:center}.community-grid{grid-template-columns:1fr}.community-profile-form{grid-template-columns:1fr}.community-checkbox{grid-column:auto}.community-row{flex-wrap:wrap}.community-row-copy{min-width:calc(100% - 60px)}.community-row-actions{width:100%;padding-left:45px}.community-row>button{margin-left:auto}}
 .community-row>button.danger{background:#472c29;border-color:#81534c;color:#f1c9bd}
+
+.community-presence{color:#9bc99e!important;font-size:10px}

@@ -2,8 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "../../lib/supabase/browser";
+import { useChatPresence } from "../../lib/use-chat-presence";
 
-type Profile = { user_id: string; username: string; display_name: string; discoverable: boolean };
+type Profile = { user_id: string; username: string; display_name: string; discoverable: boolean; show_online_status: boolean; show_last_seen: boolean };
 type SearchUser = { user_id: string; username: string; display_name: string };
 type Friend = { friend_user_id: string; username: string | null; display_name: string; friends_since: string };
 type FriendRequest = { request_id: string; other_user_id: string; username: string | null; display_name: string; direction: "incoming" | "outgoing"; created_at: string };
@@ -14,6 +15,10 @@ export default function CommunityClient({ userId }: { userId: string }) {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [discoverable, setDiscoverable] = useState(false);
+  const [showOnlineStatus, setShowOnlineStatus] = useState(false);
+  const [showLastSeen, setShowLastSeen] = useState(false);
+  const [savingPresence, setSavingPresence] = useState(false);
+  const presence = useChatPresence();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
@@ -29,7 +34,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
     setError("");
     const supabase = createSupabaseBrowserClient();
     const [profileResult, friendsResult, requestsResult, blocksResult] = await Promise.all([
-      supabase.from("chat_profiles").select("user_id,username,display_name,discoverable").eq("user_id", userId).maybeSingle(),
+      supabase.from("chat_profiles").select("user_id,username,display_name,discoverable,show_online_status,show_last_seen").eq("user_id", userId).maybeSingle(),
       supabase.rpc("chat_list_friends"),
       supabase.rpc("chat_list_friend_requests"),
       supabase.rpc("chat_list_blocked_users")
@@ -44,6 +49,8 @@ export default function CommunityClient({ userId }: { userId: string }) {
       setUsername(nextProfile.username);
       setDisplayName(nextProfile.display_name);
       setDiscoverable(nextProfile.discoverable);
+      setShowOnlineStatus(nextProfile.show_online_status);
+      setShowLastSeen(nextProfile.show_last_seen);
     }
     setFriends((friendsResult.data ?? []) as Friend[]);
     setRequests((requestsResult.data ?? []) as FriendRequest[]);
@@ -126,6 +133,27 @@ export default function CommunityClient({ userId }: { userId: string }) {
     } finally { setBusyId(""); }
   }
 
+  async function savePresencePrivacy() {
+    setSavingPresence(true);
+    setError("");
+    try {
+      const { error: privacyError } = await createSupabaseBrowserClient().rpc("chat_set_presence_privacy", {
+        p_show_online_status: showOnlineStatus,
+        p_show_last_seen: showLastSeen
+      });
+      if (privacyError) throw privacyError;
+      const { error: heartbeatError } = await createSupabaseBrowserClient().rpc("chat_presence_heartbeat");
+      if (heartbeatError) throw heartbeatError;
+      window.dispatchEvent(new Event("vendrith-presence-refresh"));
+      await refresh();
+      setStatus("Presence privacy settings saved.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save presence privacy settings.");
+    } finally {
+      setSavingPresence(false);
+    }
+  }
+
   async function signOut() {
     await createSupabaseBrowserClient().auth.signOut();
     window.location.assign("/login");
@@ -174,6 +202,15 @@ export default function CommunityClient({ userId }: { userId: string }) {
           <button type="submit" disabled={savingProfile}>{savingProfile ? "Saving…" : profile ? "Save profile" : "Create profile"}</button>
         </form>
       </section>
+
+      {profile && <section className="community-card">
+        <div className="community-section-title"><div><h2>Online status &amp; privacy</h2><p>Only accepted friends can see your presence. Status expires after 90 seconds without a heartbeat.</p></div></div>
+        <div className="community-profile-form">
+          <label className="community-checkbox"><input type="checkbox" checked={showOnlineStatus} onChange={(event) => setShowOnlineStatus(event.target.checked)} /> Show my online status to friends</label>
+          <label className="community-checkbox"><input type="checkbox" checked={showLastSeen} onChange={(event) => setShowLastSeen(event.target.checked)} disabled={!showOnlineStatus} /> Show my last seen time to friends when offline</label>
+          <button type="button" disabled={savingPresence} onClick={() => void savePresencePrivacy()}>{savingPresence ? "Saving…" : "Save presence privacy"}</button>
+        </div>
+      </section>}
 
       {profile && <>
         <section className="community-card">
@@ -234,7 +271,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
               {friends.length === 0 && <p className="community-empty">Your friend list is empty for now.</p>}
               {friends.map((friend) => <article className="community-row" key={friend.friend_user_id}>
                 <div className="community-avatar">{friend.display_name.slice(0, 1).toUpperCase()}</div>
-                <div className="community-row-copy"><strong>{friend.display_name}</strong><span>{friend.username ? "@" + friend.username : "Vendrith player"}</span></div>
+                <div className="community-row-copy"><strong>{friend.display_name}</strong><span>{friend.username ? "@" + friend.username : "Vendrith player"}</span><span className="community-presence">{presence[friend.friend_user_id]?.is_online ? "● Online" : presence[friend.friend_user_id]?.last_seen_at ? "Offline · last seen " + new Date(presence[friend.friend_user_id].last_seen_at as string).toLocaleString() : "Offline or status hidden"}</span></div>
                 <button className="secondary" type="button" disabled={busyId === friend.friend_user_id} onClick={() => void runAction(friend.friend_user_id, () => createSupabaseBrowserClient().rpc("chat_remove_friend", { p_other_user_id: friend.friend_user_id }), "Friend removed.")}>Remove</button>
                 <button className="danger" type="button" disabled={busyId === friend.friend_user_id} onClick={() => void runAction(friend.friend_user_id, () => createSupabaseBrowserClient().rpc("chat_block_user", { p_other_user_id: friend.friend_user_id }), "Player blocked and friendship removed.")}>Block</button>
               </article>)}
