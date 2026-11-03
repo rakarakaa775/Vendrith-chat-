@@ -23,13 +23,16 @@ type FriendRequest = {
 };
 type BlockedUser = { blocked_user_id: string; username: string; display_name: string; blocked_at: string };
 type Presence = { friend_user_id: string; is_online: boolean; last_seen_at: string | null };
-type Tab = "discover" | "friends" | "requests" | "blocked" | "profile";
+type GroupMember = { user_id: string; role: "owner" | "admin" | "moderator" | "member"; username: string; display_name: string };
+type GroupConversation = { id: string; title: string; created_at: string; members: GroupMember[] };
+type Tab = "discover" | "friends" | "requests" | "blocked" | "groups" | "profile";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "discover", label: "Discover" },
   { id: "friends", label: "Friends" },
   { id: "requests", label: "Requests" },
   { id: "blocked", label: "Blocked" },
+  { id: "groups", label: "Groups" },
   { id: "profile", label: "My profile" }
 ];
 
@@ -47,6 +50,9 @@ export default function CommunityClient({ userId }: { userId: string }) {
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [presence, setPresence] = useState<Presence[]>([]);
+  const [groups, setGroups] = useState<GroupConversation[]>([]);
+  const [groupTitle, setGroupTitle] = useState("");
+  const [groupMemberId, setGroupMemberId] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("Loading your community…");
@@ -55,14 +61,15 @@ export default function CommunityClient({ userId }: { userId: string }) {
 
   const refresh = useCallback(async () => {
     setError("");
-    const [profileResult, friendsResult, requestsResult, blockedResult, presenceResult] = await Promise.all([
+    const [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult] = await Promise.all([
       supabase.rpc("chat_get_my_profile"),
       supabase.rpc("chat_list_friends"),
       supabase.rpc("chat_list_friend_requests"),
       supabase.rpc("chat_list_blocked_users"),
-      supabase.rpc("chat_list_friend_presence")
+      supabase.rpc("chat_list_friend_presence"),
+      supabase.from("chat_conversations").select("id,title,created_at").eq("kind", "group").order("created_at", { ascending: false })
     ]);
-    const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult].find((item) => item.error);
+    const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult].find((item) => item.error);
     if (failed?.error) throw failed.error;
 
     const ownProfile = (profileResult.data ?? null) as Profile | null;
@@ -78,6 +85,23 @@ export default function CommunityClient({ userId }: { userId: string }) {
     setRequests((requestsResult.data ?? []) as FriendRequest[]);
     setBlocked((blockedResult.data ?? []) as BlockedUser[]);
     setPresence((presenceResult.data ?? []) as Presence[]);
+    const groupRows = (groupsResult.data ?? []) as { id: string; title: string; created_at: string }[];
+    const expandedGroups = await Promise.all(groupRows.map(async (group) => {
+      const [membersResult, profilesResult] = await Promise.all([
+        supabase.from("chat_members").select("user_id,role").eq("conversation_id", group.id),
+        supabase.rpc("chat_get_conversation_profiles", { p_conversation_ids: [group.id] })
+      ]);
+      if (membersResult.error) throw membersResult.error;
+      if (profilesResult.error) throw profilesResult.error;
+      const profiles = new Map(((profilesResult.data ?? []) as { user_id: string; username: string; display_name: string }[]).map((item) => [item.user_id, item]));
+      const members = ((membersResult.data ?? []) as { user_id: string; role: GroupMember["role"] }[]).map((member) => ({
+        ...member,
+        username: profiles.get(member.user_id)?.username ?? "player",
+        display_name: profiles.get(member.user_id)?.display_name ?? "Vendrith player"
+      }));
+      return { ...group, title: group.title || "Untitled group", members };
+    }));
+    setGroups(expandedGroups);
     setNotice("Community data is up to date.");
   }, [supabase]);
 
@@ -154,6 +178,32 @@ export default function CommunityClient({ userId }: { userId: string }) {
       if (rpcError) throw rpcError;
       window.location.assign("/");
     }, "Opening your conversation…");
+  }
+
+  async function createGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!groupTitle.trim() || !groupMemberId || busy) return;
+    await perform("create-group", async () => {
+      const { error: rpcError } = await supabase.rpc("chat_create_group_conversation", {
+        p_title: groupTitle.trim(),
+        p_member_ids: [groupMemberId]
+      });
+      if (rpcError) throw rpcError;
+      setGroupTitle("");
+      setGroupMemberId("");
+    }, "Group conversation created.");
+  }
+
+  async function addGroupMember(groupId: string) {
+    if (!groupMemberId || busy) return;
+    await perform(`add-group-member:${groupId}`, async () => {
+      const { error: rpcError } = await supabase.rpc("chat_add_group_member", {
+        p_conversation_id: groupId,
+        p_member_id: groupMemberId
+      });
+      if (rpcError) throw rpcError;
+      setGroupMemberId("");
+    }, "Player added to group.");
   }
 
   const friendIds = new Set(friends.map((friend) => friend.friend_user_id));
@@ -274,6 +324,45 @@ export default function CommunityClient({ userId }: { userId: string }) {
                 <div className="community-person-actions"><button type="button" onClick={() => void perform(`unblock:${player.blocked_user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_unblock_user", { p_other_user_id: player.blocked_user_id }); if (rpcError) throw rpcError; }, "Player unblocked.")} disabled={Boolean(busy)}>Unblock</button></div>
               </article>)}
               {blocked.length === 0 && <p className="community-empty">You have no blocked players.</p>}
+            </div>
+          </>
+        )}
+
+        {tab === "groups" && (
+          <>
+            <div className="community-section-title"><div><h2>Group conversations</h2><p>Create a group with a friend and manage its member roles.</p></div></div>
+            <form className="community-search community-group-create" onSubmit={createGroup}>
+              <input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} maxLength={60} placeholder="Group name…" aria-label="Group name" required />
+              <select value={groupMemberId} onChange={(event) => setGroupMemberId(event.target.value)} aria-label="Choose first group member" required>
+                <option value="">Choose a friend…</option>
+                {friends.map((friend) => <option key={friend.friend_user_id} value={friend.friend_user_id}>{friend.display_name} (@{friend.username})</option>)}
+              </select>
+              <button type="submit" disabled={Boolean(busy) || !groupTitle.trim() || !groupMemberId}>Create group</button>
+            </form>
+            <div className="community-list">
+              {groups.map((group) => {
+                const myRole = group.members.find((member) => member.user_id === userId)?.role ?? "member";
+                const canManage = myRole === "owner" || myRole === "admin";
+                return <article className="community-group-card" key={group.id}>
+                  <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}</span></div><button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div>
+                  {group.members.map((member) => <div className="community-group-member" key={member.user_id}>
+                    <span>{member.display_name} <small>@{member.username}</small></span>
+                    <strong>{member.role}</strong>
+                    {canManage && member.user_id !== userId && <div className="community-person-actions">
+                      {(["admin", "moderator", "member"] as const).filter((role) => role !== member.role).map((role) => <button className="community-subtle-button" key={role} type="button" onClick={() => void perform(`role:${group.id}:${member.user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_set_group_member_role", { p_conversation_id: group.id, p_member_id: member.user_id, p_role: role }); if (rpcError) throw rpcError; }, `Member role changed to ${role}.`)} disabled={Boolean(busy)}>Make {role}</button>)}
+                      <button className="community-danger-button" type="button" onClick={() => void perform(`remove-member:${group.id}:${member.user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_remove_group_member", { p_conversation_id: group.id, p_member_id: member.user_id }); if (rpcError) throw rpcError; }, "Group member removed.")} disabled={Boolean(busy)}>Remove</button>
+                    </div>}
+                  </div>)}
+                  {(canManage || myRole === "moderator") && <div className="community-group-add">
+                    <select value={groupMemberId} onChange={(event) => setGroupMemberId(event.target.value)} aria-label={`Choose a friend to add to ${group.title}`}>
+                      <option value="">Add a friend…</option>
+                      {friends.filter((friend) => !group.members.some((member) => member.user_id === friend.friend_user_id)).map((friend) => <option key={friend.friend_user_id} value={friend.friend_user_id}>{friend.display_name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => void addGroupMember(group.id)} disabled={Boolean(busy) || !groupMemberId}>Add member</button>
+                  </div>}
+                </article>;
+              })}
+              {groups.length === 0 && <p className="community-empty">No group conversations yet. Add a friend first, then create a group.</p>}
             </div>
           </>
         )}
