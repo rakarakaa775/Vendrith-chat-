@@ -177,3 +177,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added a moderator-only/owner/admin audit-history RPC and group Community display for moderation actions.
 
 - [x] Added a separate archived conversation view and per-user restore action; reopening a direct conversation automatically restores it for the initiating player.
+
+- [x] Added server-enforced 15-minute author-only edit and soft-delete operations; deletion retains a placeholder and preserves the conversation timeline.
