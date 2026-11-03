@@ -136,3 +136,7 @@
 .message-reply-context { margin: 0 0 .45rem; padding: .45rem .65rem; border-left: 3px solid var(--accent, #6d5dfc); border-radius: .25rem; opacity: .75; font-size: .88rem; }
 .message-reply-button { margin-top: .5rem; padding: .2rem .45rem; border: 0; background: transparent; color: inherit; opacity: .7; cursor: pointer; font-size: .78rem; }
 .message-reply-draft { flex: 1 1 100%; display: flex; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border-left: 3px solid var(--accent, #6d5dfc); background: var(--panel, #17171d); }
+
+.backend-conversations-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.backend-conversations-heading h2 { margin: 0; }
+.backend-conversations-heading button { padding: .35rem .55rem; border: 1px solid var(--border, #30303a); border-radius: .5rem; background: transparent; color: inherit; font-size: .78rem; }
