@@ -145,63 +145,42 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     else setReactions((data ?? []) as Reaction[]);
   }
 
-  // Subscribe only to the active conversation. Postgres Changes applies the
-  // existing chat_messages SELECT grant and member-only RLS policy per user.
+  // Subscribe to every visible conversation so the inbox preview and unread badges
+  // stay current even while another conversation is open.
+  const conversationKey = conversations.map((conversation) => conversation.id).sort().join(",");
   useEffect(() => {
-    if (!activeId) return;
-
+    if (!conversationKey) return;
     const supabase = createSupabaseBrowserClient();
-    const channel = supabase
-      .channel(`vendrith-chat:${userId}:${activeId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-          filter: `conversation_id=eq.${activeId}`
-        },
-        (payload: { new: Message }) => {
-          const incoming = payload.new;
-          if (incoming.conversation_id !== activeId) return;
-
-          setConversations((current) => {
-            const updated = current.map((conversation) => {
-              if (conversation.id !== activeId) return conversation;
-              const messages = mergeRealtimeMessage(conversation.messages, incoming, 50);
-              return { ...conversation, messages };
-            });
-            return updated.sort((a, b) =>
-              (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(
-                a.messages.at(-1)?.created_at ?? a.created_at
-              )
-            );
-          });
-          setStatus("Live updates connected. New messages arrive automatically.");
+    const ids = conversationKey.split(",");
+    const channels = ids.map((conversationId) => supabase
+      .channel(`vendrith-chat:${userId}:${conversationId}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "chat_messages",
+        filter: `conversation_id=eq.${conversationId}`
+      }, (payload: { new: Message }) => {
+        const incoming = payload.new;
+        if (incoming.conversation_id !== conversationId) return;
+        setConversations((current) => current.map((conversation) => {
+          if (conversation.id !== conversationId) return conversation;
+          const messages = mergeRealtimeMessage(conversation.messages, incoming, 50);
+          const isUnread = incoming.sender_id !== userId && conversationId !== activeId;
+          return { ...conversation, messages, unreadCount: isUnread ? conversation.unreadCount + 1 : conversation.unreadCount };
+        }).sort((a, b) =>
+          (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(a.messages.at(-1)?.created_at ?? a.created_at)
+        ));
+        if (incoming.sender_id !== userId && conversationId === activeId) {
+          void supabase.rpc("chat_mark_conversation_read", { p_conversation_id: conversationId });
         }
-      )
-      .subscribe((
-        channelStatus: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED",
-        channelError?: Error
-      ) => {
-        if (channelStatus === "SUBSCRIBED") {
-          setError("");
-          setStatus("Live updates connected. Synchronizing recent history…");
-          void loadConversations()
-            .then(() => setStatus("Live updates connected. New messages arrive automatically."))
-            .catch((cause) => setError(cause instanceof Error ? cause.message : "Realtime history sync failed."));
-        } else if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
+        setStatus("Live conversation updates connected.");
+      })
+      .subscribe((channelStatus: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED", channelError?: Error) => {
+        if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") {
           setStatus("Live updates disconnected. Reconnecting…");
           if (channelError) setError(channelError.message);
-        } else if (channelStatus === "CLOSED") {
-          setStatus("Live updates paused.");
         }
-      });
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [activeId, userId, loadConversations]);
+      }));
+    return () => { channels.forEach((channel) => { void supabase.removeChannel(channel); }); };
+  }, [conversationKey, userId, activeId]);
 
   async function createConversation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
