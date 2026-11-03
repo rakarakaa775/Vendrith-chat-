@@ -62,6 +62,8 @@ The isolated Non-Production database contains Chat-owned tables for:
 - `chat_blocks`: directional block state.
 - `chat_presence`: expiring heartbeat state.
 - `chat_group_reports` and `chat_group_moderation_events`: report workflow and append-only moderation trail.
+- `chat_notifications` and `chat_notification_preferences`: private event inbox, read state, and category preferences.
+- `chat_message_reactions`: member-scoped message reactions.
 - `chat_private.rate_limit_events`: private rate-limit ledger.
 
 All exposed Chat tables have RLS enabled. Direct-message writes and social/group mutations use narrowly scoped RPC entry points; application UI is not an authorization boundary. Database policies and RPCs remain the authoritative permission layer.
@@ -70,11 +72,12 @@ All exposed Chat tables have RLS enabled. Direct-message writes and social/group
 
 ## 6. Application routes and behavior
 
-- `/`: authenticated server-backed chat, direct and group conversation history, message composer, and realtime subscription.
+- `/`: authenticated server-backed chat, direct/group history with cursor pagination, unread/read state, per-member archive, replies, reactions, message composer, and realtime conversation previews.
+- `/notifications`: private notification inbox, read/unread controls, per-category preferences, and realtime inserts.
 - `/login`: email/password authentication.
 - `/auth/callback`: PKCE callback.
 - `/forgot-password` and `/reset-password`: password recovery.
-- `/community`: discoverable player search, friend requests, friends, blocks, profile/privacy controls, group creation, and group member role management.
+- `/community`: discoverable player search, friend requests, friends, blocks, profile/privacy controls, group creation/metadata, ownership transfer, closure, member role management, reports, and moderation audit history.
 - `/realtime-probe` and `/test-chat`: development-only tools; retain their environment boundary.
 
 Local preview data must never be represented as shared or server-persisted.
@@ -86,7 +89,7 @@ Local preview data must never be represented as shared or server-persisted.
 - Each logical send uses one client idempotency UUID, reused on retry.
 - A successful database commit is the point at which the message is considered persisted.
 - Message history is bounded and ordered deterministically by timestamp and ID.
-- Realtime is an optimization, not the source of truth. On subscription/reconnect, reload persisted history and deduplicate events.
+- Realtime is an optimization, not the source of truth. Conversation inserts update previews and unread badges; notification inserts refresh the private inbox. Persisted history remains authoritative.
 - Realtime message delivery must remain subject to the same member-scoped SELECT authorization.
 - Group conversations use the same persisted message stream, with group-specific member roles.
 
@@ -119,8 +122,8 @@ Local preview data must never be represented as shared or server-persisted.
 3. Authentication and canonical identity — main implementation exists; account/session settings and production identity handoff remain.
 4. Direct-message backend, RLS, and rate limits — implemented in Non-Production; migration-source reconciliation remains.
 5. Message realtime — implemented; broader conversation/social presence events remain.
-6. Social & Community — player search, friend lifecycle, block/unblock, profile privacy, group creation/member/role UI now connected; invitations, lifecycle polish, moderation UI, and realtime relationship updates remain.
-7. Media and notifications — planned.
+6. Social & Community — player search, friend lifecycle, block/unblock, profile privacy, group creation/member/role UI now connected; invitation/join flow, avatar upload, deletion policy, and realtime relationship updates remain.
+7. Media — private attachment upload/download and storage authorization remain planned; notification inbox/preferences/event triggers are implemented.
 8. Security operations and production preparation — planned; production integration requires separate approval.
 
 ## 11. Implementation-first execution policy
