@@ -62,17 +62,17 @@
 - [ ] Document identity handoff for eventual World of Vendrith integration; production connection remains prohibited.
 
 ## Phase 4 — Backend & Database
-**Status:** Direct-message foundation implemented in Non-Production; social and group schema remain.
+**Status:** Direct-message, social, group, notification, unread/read, and reaction schema/RPCs implemented in Non-Production; migration-source reconciliation and attachment storage remain open.
 - [x] Chat-owned direct conversation, member, and message schema.
 - [x] RLS and least-privilege grants for direct-message reads and RPC writes.
 - [x] Server-derived sender identity, bounded message body, and idempotency key.
 - [x] Non-Production rate-limit ledger and enforcement.
 - [x] Social graph, profile, presence, group, report, and moderation database objects/RPCs are present in Non-Production; their migration files still need reconciliation into Git.
-- [ ] Chat-owned player profile table and preferences.
-- [ ] Friend relationship/request schema and state-transition RPCs.
-- [ ] Block relationship schema and block/unblock RPCs.
-- [ ] Group conversation, membership, invitation, role, and moderation schema.
-- [ ] Notification preference and in-app notification persistence.
+- [x] Chat-owned player profile table and presentation/privacy preferences.
+- [x] Friend relationship/request schema and state-transition RPCs.
+- [x] Block relationship schema and block/unblock RPCs.
+- [x] Group conversation, membership, role, reporting, and moderation schema/RPCs; invitation/join-link flow remains open.
+- [x] Notification preference and in-app notification persistence.
 - [ ] Private attachment metadata and storage authorization design.
 
 ## Phase 5 — Realtime
@@ -171,3 +171,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added server-authorized replies restricted to parent messages in the same conversation, plus quoted context in the thread.
 
 - [x] Added owner-only group closure; closed groups retain member read access and reject new message writes at the server RPC boundary.
+
+- [x] Added persisted reaction records and same-conversation reply references with authenticated RPC entry points.
