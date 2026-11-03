@@ -32,6 +32,7 @@ type Reaction = { id: string; message_id: string; user_id: string; emoji: string
 
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [recipientId, setRecipientId] = useState("");
   const [draft, setDraft] = useState("");
@@ -47,9 +48,11 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const loadConversations = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
     const { data: memberships, error: membershipError } = await supabase
-      .from("chat_members").select("conversation_id,archived_at").eq("user_id", userId).is("archived_at", null);
+      .from("chat_members").select("conversation_id,archived_at").eq("user_id", userId);
     if (membershipError) throw membershipError;
-    const ids = [...new Set((memberships ?? []).map((row: { conversation_id: string }) => row.conversation_id))];
+    const visibleMemberships = (memberships ?? []).filter((row: { archived_at: string | null }) => showArchived ? Boolean(row.archived_at) : !row.archived_at);
+    const membershipByConversation = new Map(visibleMemberships.map((row: { conversation_id: string; archived_at: string | null }) => [row.conversation_id, row.archived_at]));
+    const ids = [...new Set(visibleMemberships.map((row: { conversation_id: string }) => row.conversation_id))];
     if (!ids.length) {
       setConversations([]); setActiveId(""); setStatus("No conversations yet. Start one using another test player's Auth UUID."); return;
     }
@@ -83,7 +86,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         members,
         messages: ((messageResult.data ?? []) as Message[]).reverse(),
         unreadCount: 0,
-        archivedAt: null,
+        archivedAt: membershipByConversation.get(id) ?? null,
         closedAt: conversationResult.data.closed_at ?? null,
         hasMore: (messageResult.data ?? []).length === 50
       };
@@ -95,7 +98,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     setConversations(rows);
     setActiveId((current) => rows.some((row) => row.id === current) ? current : rows[0]?.id ?? "");
     setStatus(`${rows.length} server-backed conversation(s) loaded.`);
-  }, [userId]);
+  }, [userId, showArchived]);
 
   const refresh = useCallback(async () => {
     setLoading(true); setError("");
@@ -253,20 +256,20 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     }
   }
 
-  async function archiveActiveConversation() {
+  async function setActiveConversationArchived(archived: boolean) {
     if (!active || busy) return;
     setBusy(true);
     setError("");
     try {
       const { error: archiveError } = await createSupabaseBrowserClient().rpc("chat_set_conversation_archived", {
         p_conversation_id: active.id,
-        p_archived: true
+        p_archived: archived
       });
       if (archiveError) throw archiveError;
       await loadConversations();
-      setStatus("Conversation archived for your account. Other members keep their history.");
+      setStatus(archived ? "Conversation archived for your account. Other members keep their history." : "Conversation restored to your active list.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not archive this conversation.");
+      setError(cause instanceof Error ? cause.message : "Could not update this conversation.");
     } finally {
       setBusy(false);
     }
@@ -288,9 +291,9 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <section className="backend-identity"><strong>{email ?? "Verified test player"}</strong><code>{userId}</code><span>Verified Supabase Auth identity · Non-production only</span></section>
     <section className="backend-create"><h2>Start a direct conversation</h2><form onSubmit={createConversation}><input aria-label="Recipient player UUID" placeholder="Other test player's Auth UUID" value={recipientId} onChange={(event) => setRecipientId(event.target.value)} /><button disabled={busy || !recipientId.trim()}>Create / open</button></form></section>
     <div className="backend-columns">
-      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
+      <aside className="backend-conversations"><div className="backend-conversations-heading"><h2>{showArchived ? "Archived" : "Conversations"}</h2><button type="button" onClick={() => setShowArchived((current) => !current)}>{showArchived ? "Show active" : "Show archived"}</button></div>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}{active.closedAt ? " · Closed (read-only)" : ""}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
+        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}{active.closedAt ? " · Closed (read-only)" : ""}</p><button type="button" onClick={() => void setActiveConversationArchived(!active.archivedAt)} disabled={busy}>{active.archivedAt ? "Restore for me" : "Archive for me"}</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
           const messageReactions = reactions.filter((reaction) => reaction.message_id === message.id);
           return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
             {message.reply_to_message_id && <blockquote className="message-reply-context">{active.messages.find((item) => item.id === message.reply_to_message_id)?.body ?? "Original message"}</blockquote>}<p>{message.body}</p>
