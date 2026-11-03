@@ -87,7 +87,7 @@
 - [ ] Shared reconnect/backoff lifecycle and app-wide connection status.
 
 ## Phase 6 — Social & Community
-**Status:** Social graph and profile UI now connected to existing Non-Production RPCs; group UI and remaining lifecycle features are next.
+**Status:** Core social graph, profile privacy, groups, moderation, ownership transfer, group closure, and audit UI are implemented; invitation flow, avatars, and deletion policy remain.
 - [x] Player discovery/search through rate-limited RPC using public username/display name only; email addresses are not exposed.
 - [x] Friend request creation, incoming/outgoing lists, accept, reject, and cancel.
 - [x] Friend list, remove friend, and relationship state synchronization.
@@ -101,7 +101,7 @@
 - [x] Community moderation report submission, report review, dismiss/member-removal controls, and role-restricted audit-history presentation.
 
 ## Phase 7 — Media & Advanced Features
-**Status:** Planned after social foundation.
+**Status:** Notifications, reactions, replies, message edit/delete, and inbox are implemented; private media/storage, pinned messages, accessibility, and localization remain.
 - [ ] Private image/file upload and download.
 - [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
 - [ ] Attachment access restricted to active conversation members.
@@ -112,7 +112,7 @@
 - [ ] Accessibility and localization foundations.
 
 ## Phase 8 — Security, Operations & Production Preparation
-**Status:** Planned; no production connection during implementation-first work.
+**Status:** Security hardening has progressed, but retention/export, observability, deployment preparation, and production integration documentation remain. No production connection is permitted during this pass.
 - [ ] Consolidated authorization model and least-privilege database grants.
 - [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
 - [ ] Data retention, account deletion/export, backup/restore, and recovery procedures.
