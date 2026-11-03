@@ -58,7 +58,7 @@
 - [x] SSR clients, middleware, protected route, callback, sign-out, and password reset routes.
 - [x] Verified Auth UUID / JWT subject as canonical player identity.
 - [ ] Account/session settings UI and session/device management.
-- [ ] Chat-owned display profile editing; editable profile fields must never authorize access.
+- [x] Chat-owned display profile editor with server-side profile upsert and presence privacy controls; editable profile fields are presentation-only.
 - [ ] Document identity handoff for eventual World of Vendrith integration; production connection remains prohibited.
 
 ## Phase 4 — Backend & Database
@@ -86,12 +86,12 @@
 - [ ] Shared reconnect/backoff lifecycle and app-wide connection status.
 
 ## Phase 6 — Social & Community
-**Status:** Next major implementation phase.
-- [ ] Player discovery/search with safe, rate-limited lookup fields; never expose email addresses.
-- [ ] Friend request creation, incoming/outgoing lists, accept, reject, and cancel.
-- [ ] Friend list, remove friend, and relationship state synchronization.
-- [ ] Block/unblock players; define prevention of new direct-message initiation and behavior for existing conversations.
-- [ ] Privacy settings for discoverability and friend-request permissions.
+**Status:** Social graph and profile UI now connected to existing Non-Production RPCs; group UI and remaining lifecycle features are next.
+- [x] Player discovery/search through rate-limited RPC using public username/display name only; email addresses are not exposed.
+- [x] Friend request creation, incoming/outgoing lists, accept, reject, and cancel.
+- [x] Friend list, remove friend, and relationship state synchronization.
+- [x] Block/unblock controls integrated with server-side relationship rules for discovery, requests, and new direct-message initiation.
+- [x] Discoverability and presence privacy controls (online / last seen). Friend-request permissions remain open.
 - [ ] Group creation, invitations, join/leave, and member removal.
 - [ ] Group roles: owner, admin, moderator, and member, enforced server-side.
 - [ ] Admin/moderator management and safe ownership transfer.
