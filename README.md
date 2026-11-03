@@ -4,7 +4,7 @@ Vendrith Chat is the standalone communication service for the World of Vendrith 
 
 ## Current status
 
-**Stage:** Implementation-first roadmap. Email/password authentication, server-backed messaging, realtime inbox updates, unread/read state, per-user archive, reactions/replies, social graph, profile/privacy controls, group lifecycle/moderation, and in-app notifications are implemented in the isolated Non-Production environment. All test execution and QA are intentionally deferred until the roadmap implementation phases are complete.
+**Stage:** Implementation-first roadmap. Email/password authentication, server-backed messaging, realtime inbox updates, unread/read state, per-user archive, reactions/replies, time-limited message edit/delete, social graph, profile/privacy controls, group lifecycle/moderation, and in-app notifications are implemented in the isolated Non-Production environment. All test execution and QA are intentionally deferred until the roadmap implementation phases are complete.
 **Repository:** `rakarakaa775/Vendrith-chat-`
 **Default branch:** `main`
 **Primary application language:** English
