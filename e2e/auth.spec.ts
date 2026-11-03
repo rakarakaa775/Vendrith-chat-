@@ -9,23 +9,21 @@ test('shows the protected non-production sign-in state to an unauthenticated vis
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Authentication required' })).toBeVisible();
   await page.getByRole('link', { name: 'Continue to sign in' }).click();
-  await expect(page).toHaveURL(/\\/login$/);
+  await expect.poll(() => page.url()).toContain('/login');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await expect(page.getByText('NON-PRODUCTION TEST ENVIRONMENT')).toBeVisible();
 });
 
 test('signs in with the configured non-production E2E account and opens server chat', async ({ page }) => {
-  test.skip(!supabaseConfigured || !accountEmail || !accountPassword,
-    'Requires GitHub Actions Non-Production Supabase URL, publishable key, and E2E account credentials.');
+  test.skip(!supabaseConfigured || !accountEmail || !accountPassword, 'Requires GitHub Actions Non-Production Supabase URL, publishable key, and E2E account credentials.');
   await page.goto('/login');
   await page.getByLabel('Email address').fill(accountEmail!);
   await page.getByLabel('Password').fill(accountPassword!);
   await page.getByRole('button', { name: 'Sign in' }).click();
-
-  await expect(page).toHaveURL(/\\/$/, { timeout: 30_000 });
+  await expect.poll(() => page.url(), { timeout: 30_000 }).toMatch(/\/$/);
   await expect(page.getByRole('heading', { name: 'Vendrith Chat' })).toBeVisible();
   await expect(page.getByText(accountEmail!, { exact: true })).toBeVisible();
-  await expect(page.getByText(/server-backed conversation\\(s\\) loaded|No conversations yet\\. Start one/i)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/server-backed conversation\(s\) loaded|No conversations yet\. Start one/i)).toBeVisible({ timeout: 30_000 });
 });
 
 test('provides email and password registration and sign-in modes', async ({ page }) => {
@@ -42,7 +40,7 @@ test('provides email and password registration and sign-in modes', async ({ page
 test('exposes a password recovery request page', async ({ page }) => {
   await page.goto('/login');
   await page.getByRole('link', { name: 'Forgot password?' }).click();
-  await expect(page).toHaveURL(/\\/forgot-password$/);
+  await expect.poll(() => page.url()).toContain('/forgot-password');
   await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible();
   await expect(page.getByLabel('Email address')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send reset link' })).toBeVisible();
