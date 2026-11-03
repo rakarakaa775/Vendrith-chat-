@@ -129,7 +129,8 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     if (!activeId) return;
     const supabase = createSupabaseBrowserClient();
     let cancelled = false;
-    void supabase.rpc("chat_mark_conversation_read", { p_conversation_id: activeId }).then(({ error: readError }) => {
+    void supabase.rpc("chat_mark_conversation_read", { p_conversation_id: activeId }).then((result: { error: { message: string } | null }) => {
+      const readError = result.error;
       if (cancelled) return;
       if (readError) {
         setError(readError.message);
