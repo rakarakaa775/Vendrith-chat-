@@ -140,3 +140,21 @@ Security properties verified after migration:
 - Supabase security advisors reported no new Chat-related findings. Existing WOV/E2E baseline findings remain unchanged and were not modified.
 
 **Not yet verified:** an authenticated test player's direct-conversation creation, cross-member read isolation, send idempotency under retries, and second-player message delivery. These require dedicated non-production test accounts and live authenticated browser/API testing. No realtime publication was enabled.
+
+
+## Implementation addendum — 2026-11-03
+
+The approved Non-Production direct-message contract has since been implemented and extended. The isolated project now contains:
+- Direct conversations, memberships, messages, idempotency, and message rate limiting.
+- Message realtime publication and client subscription/history reconciliation.
+- Chat profiles, discoverability, friend requests, friendships, directional blocks, and presence privacy/heartbeat.
+- Group conversations, member roles, member management, group reports, and moderation event records.
+- Authenticated RPCs for profile, social graph, presence, group, and moderation operations.
+
+The application now has an authenticated Community route for player discovery, friend lifecycle, block/unblock, profile/privacy settings, group creation/member management, and group report review. The main chat renders direct and group conversations using the conversation profile RPC.
+
+A narrowly scoped `chat_get_my_profile` RPC was added on 2026-11-03 so the authenticated user can load only their own profile without granting direct table SELECT privileges. Its migration is tracked as `supabase/migrations/20261103065811_chat_get_my_profile_rpc_v1.sql`.
+
+**Important repository reconciliation item:** several social/group migrations are present in the Non-Production migration history but their SQL files are not yet tracked in this repository. Reconstruct and commit those exact schema changes before relying on repository migrations to provision a clean environment. Do not reapply those existing migrations to the current Non-Production database.
+
+Final tests and QA remain intentionally deferred under the implementation-first execution policy. No production project was modified.
