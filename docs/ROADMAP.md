@@ -169,3 +169,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Expanded realtime subscriptions from only the active thread to all visible conversations, with duplicate-safe unread increments.
 
 - [x] Added server-authorized replies restricted to parent messages in the same conversation, plus quoted context in the thread.
+
+- [x] Added owner-only group closure; closed groups retain member read access and reject new message writes at the server RPC boundary.
