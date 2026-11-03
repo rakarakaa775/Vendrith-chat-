@@ -181,3 +181,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added server-enforced 15-minute author-only edit and soft-delete operations; deletion retains a placeholder and preserves the conversation timeline.
 
 - [x] Reconciled the filenames of all newly added migrations against the exact versions recorded by the Non-Production database; no existing migration was reapplied. Nine earlier social/group migration source files remain absent and are explicitly tracked above.
+
+- [x] Hardened moderation notifications so the reporter’s identity is not exposed to group moderators through notification actor metadata.
