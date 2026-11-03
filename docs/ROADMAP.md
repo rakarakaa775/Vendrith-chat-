@@ -106,7 +106,7 @@
 - [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
 - [ ] Attachment access restricted to active conversation members.
 - [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers cover incoming messages, friend requests, group additions, and moderator report alerts.
-- [x] Notification read/unread state and inbox controls; [ ] event-specific deep links and realtime inbox refresh.
+- [x] Notification read/unread state and inbox controls; [ ] event-specific deep links; [x] realtime inbox refresh.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
 - [x] Persisted message reactions (six allowed emoji); [ ] reply context, edit/delete policy, and pinned messages.
 - [ ] Accessibility and localization foundations.
@@ -163,3 +163,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added owner/admin group name and description editing, plus explicit owner transfer (the former owner becomes admin).
 
 - [x] Added group-added notifications for invited members and moderation-report alerts for group owners/admins/moderators.
+
+- [x] Added a private Realtime subscription filtered to the authenticated user’s notification rows.
