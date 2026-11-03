@@ -31,6 +31,7 @@ type Conversation = {
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string; replyToMessageId?: string | null };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
+type Attachment = { id: string; conversation_id: string; uploader_id: string; object_path: string; original_name: string; mime_type: string; byte_size: number; created_at: string };
 
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -47,6 +48,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const [status, setStatus] = useState("Loading your server conversations…");
   const [failedRequest, setFailedRequest] = useState<PendingMessage | null>(null);
   const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const loadConversations = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
@@ -154,6 +156,76 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
       });
     return () => { cancelled = true; };
   }, [activeId]);
+
+  useEffect(() => {
+    if (!activeId) { setAttachments([]); return; }
+    let cancelled = false;
+    async function loadAttachments() {
+      const { data, error: attachmentError } = await createSupabaseBrowserClient()
+        .from("chat_attachments")
+        .select("id,conversation_id,uploader_id,object_path,original_name,mime_type,byte_size,created_at")
+        .eq("conversation_id", activeId)
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      if (attachmentError) setError(attachmentError.message);
+      else setAttachments((data ?? []) as Attachment[]);
+    }
+    void loadAttachments();
+    return () => { cancelled = true; };
+  }, [activeId]);
+
+  async function uploadAttachment(file: File) {
+    if (!active || busy) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf", "text/plain", "text/csv", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowedTypes.includes(file.type)) { setError("This file type is not allowed."); return; }
+    if (file.size < 1 || file.size > 10 * 1024 * 1024) { setError("Files must be between 1 byte and 10 MB."); return; }
+    setBusy(true); setError("");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: preparedData, error: prepareError } = await supabase.rpc("chat_prepare_attachment", {
+        p_conversation_id: active.id,
+        p_original_name: file.name,
+        p_mime_type: file.type,
+        p_byte_size: file.size
+      });
+      if (prepareError) throw prepareError;
+      const prepared = (preparedData as { attachment_id: string; object_path: string }[] | null)?.[0];
+      if (!prepared?.attachment_id || !prepared.object_path) throw new Error("The server did not authorize this upload.");
+      const { error: uploadError } = await supabase.storage.from("vendrith-chat-attachments")
+        .upload(prepared.object_path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: confirmed, error: confirmError } = await supabase.rpc("chat_confirm_attachment", {
+        p_attachment_id: prepared.attachment_id
+      });
+      if (confirmError) throw confirmError;
+      if (confirmed !== true) throw new Error("The server could not confirm the uploaded file.");
+      const { data, error: listError } = await supabase.from("chat_attachments")
+        .select("id,conversation_id,uploader_id,object_path,original_name,mime_type,byte_size,created_at")
+        .eq("conversation_id", active.id).order("created_at", { ascending: true });
+      if (listError) throw listError;
+      setAttachments((data ?? []) as Attachment[]);
+      setStatus("Private attachment uploaded and authorized for conversation members.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not upload this attachment.");
+    } finally { setBusy(false); }
+  }
+
+  async function downloadAttachment(attachment: Attachment) {
+    setError("");
+    try {
+      const { data, error: downloadError } = await createSupabaseBrowserClient()
+        .storage.from("vendrith-chat-attachments").download(attachment.object_path);
+      if (downloadError) throw downloadError;
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = attachment.original_name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not download this attachment.");
+    }
+  }
 
   async function toggleReaction(messageId: string, emoji: string) {
     const { error: reactionError } = await createSupabaseBrowserClient().rpc("chat_toggle_message_reaction", {
@@ -341,7 +413,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
               return <button type="button" key={emoji} className={selected ? "selected" : ""} aria-label={`React with ${emoji}`} onClick={() => void toggleReaction(message.id, emoji)}>{emoji}{matching.length > 0 && <span>{matching.length}</span>}</button>;
             })}</div>
           </article>;
-        })}</div>{!active.closedAt ? <form className="backend-composer" onSubmit={handleSend}>{replyTo && <div className="message-reply-draft"><span>Replying to: {replyTo.body.slice(0, 100)}</span><button type="button" onClick={() => setReplyTo(null)}>Cancel</button></div>}<input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form> : <p className="backend-status">This group is closed. Message history remains available in read-only mode.</p>}{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+        })}</div><div className="backend-attachments">{attachments.map((attachment) => <button type="button" key={attachment.id} onClick={() => void downloadAttachment(attachment)} disabled={busy}><span>{attachment.mime_type.startsWith("image/") ? "Image" : "File"} · {attachment.original_name}</span><small>{(attachment.byte_size / 1024).toFixed(1)} KB</small></button>)}</div>{!active.closedAt ? <form className="backend-composer" onSubmit={handleSend}>{replyTo && <div className="message-reply-draft"><span>Replying to: {replyTo.body.slice(0, 100)}</span><button type="button" onClick={() => setReplyTo(null)}>Cancel</button></div>}<input aria-label="Attach a file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAttachment(file); event.currentTarget.value = ""; }} /><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form> : <p className="backend-status">This group is closed. Message history remains available in read-only mode.</p>}{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
