@@ -1,155 +1,136 @@
 # Vendrith Chat — Architecture
 
-**Status:** Foundation and local-only Chat Engine implemented; authentication and remote runtime pending
-**Last reviewed:** 2026-10-31
-
-This document records the agreed architecture and current implementation boundary. It is not a claim that authentication, persistence, or messaging already work.
+**Status:** Authenticated direct chat, realtime messages, social graph, profile privacy, and group-management UI are implemented against the isolated Non-Production E2E project. Remaining product phases and all final verification are open.
+**Last reviewed:** 2026-11-03
 
 ## 1. Product boundary
 
-Vendrith Chat is a standalone web application during development and will later be integrated into the larger World of Vendrith website.
+Vendrith Chat is a standalone web application during development and will later integrate into the larger World of Vendrith website.
 
-Chat owns only communication-domain data:
-- Chat-specific display profile/preferences
-- Conversations and conversation membership
+Chat owns communication-domain data only:
+- Chat-specific profiles and privacy preferences
+- Direct/group conversations and memberships
 - Messages and message lifecycle
-- Friend relationships and blocks (subject to product approval)
-- Group metadata and roles (later phase)
-- Attachment metadata and notification preferences (later phase)
+- Friend requests, friendships, and blocks
+- Presence
+- Group roles, reports, and moderation events
+- Attachment metadata and notification preferences
 
-World of Vendrith remains the owner of player identity and all game-domain data, including worlds, maps, characters, inventory, progression, and gameplay permissions. Chat must not mutate those records.
+World of Vendrith remains the owner of player identity and game-domain data, including worlds, maps, characters, inventory, progression, and gameplay permissions. Chat must not mutate those records.
 
 ## 2. Selected technology
 
-- Next.js App Router
-- TypeScript
-- React
-- Existing CSS / minimal Tailwind; avoid introducing a large UI framework without need
-- Supabase Auth as the canonical identity authority
-- Supabase Postgres for chat-owned persistence, subject to schema/RLS review and explicit environment approval
-- Supabase SSR integration for cookie-based web sessions
-- Supabase Realtime only after authorization boundaries and history recovery are verified
+- Next.js App Router, React, and TypeScript
+- Supabase Auth as canonical identity authority
+- Supabase Postgres for Chat-owned persistence
+- Supabase SSR for cookie-based web sessions
+- Supabase Realtime for persisted message events
+- Minimal custom CSS; avoid unnecessary UI framework dependencies
 
-The responsive chat shell and local-only Chat Engine vertical slice are implemented. Authentication, database schema, RLS, remote APIs, realtime, and real message delivery are not yet implemented.
+The application has a local preview mode when backend configuration is absent and an authenticated server-backed mode when configured for the isolated Non-Production E2E project.
 
 ## 3. Identity and session contract
 
-- The stable player identity is the server/provider-verified Supabase Auth `user.id` / JWT `sub`.
+- Stable player identity is the server/provider-verified Supabase Auth user UUID / JWT subject.
 - Email, username, display name, and editable user metadata are not identity or authorization keys.
-- Never trust a browser-supplied `user_id`, sender ID, username, or profile field to establish identity.
-- Server routes/actions must validate the trusted session/claims using the supported Supabase SSR pattern. Client-only session state is not server authorization.
-- Use request-scoped server/browser clients and secure cookie handling. Keep redirect targets constrained to local application paths.
-- Separate origins do not automatically share cookies. Same Supabase project does not, by itself, provide seamless cross-origin SSO.
-- Do not put tokens in URLs, message bodies, logs, or analytics.
+- Server routes validate trusted claims and derive the principal from the session.
+- Client-supplied user IDs are only resource locators; RPCs must independently authorize them.
+- Separate origins do not automatically share cookies. Same Supabase project does not by itself provide seamless cross-origin SSO.
+- Never put tokens in URLs, message bodies, logs, or analytics.
 
 ## 4. Environment boundary
 
-Known project roles:
-
 | Environment | Project ref | Permitted use |
 | --- | --- | --- |
-| Canonical World of Vendrith production | `ojtmfokjcirvjvhnbnos` | Identity authority target only; no development writes or experiments |
-| Vendrith Non-Production E2E | `npvlokuszipgwrdipeoi` | Isolated test identities and explicitly approved non-production verification |
+| Canonical World of Vendrith production | `ojtmfokjcirvjvhnbnos` | Identity integration target only; no development writes or experiments |
+| Vendrith Non-Production E2E | `npvlokuszipgwrdipeoi` | Isolated Chat identities, schema, and implementation |
 
-The non-production project has a separate user directory. Its test users are not production players.
-
-- Missing or invalid configuration must fail closed or show an explicit mock preview.
+- Missing or invalid configuration must fail closed or show an explicit local preview.
 - Never silently fall back to production.
-- Only public publishable/legacy anon keys may be used in browser-exposed configuration.
+- Only publishable/legacy anon keys may be used in browser configuration.
 - Never expose service-role or secret keys in client bundles.
-- Production Auth settings, redirect allow-lists, SQL, migrations, RLS, storage, and data writes require separate explicit approval.
+- Production Auth settings, redirects, SQL, migrations, RLS, storage, and data writes require separate explicit approval.
 
-## 4.1 Phase 2 local chat-engine boundary
+## 5. Current backend capabilities
 
-The first Chat Engine vertical slice uses a versioned browser-local adapter (vendrith-chat:local:v1). It is a development/test boundary, not a backend.
+The isolated Non-Production database contains Chat-owned tables for:
+- `chat_profiles`: username, display name, discoverability, and presence privacy.
+- `chat_conversations`: direct and group conversations.
+- `chat_members`: member identity and group role.
+- `chat_messages`: server-generated message identity/timestamp and client idempotency key.
+- `chat_friend_requests` and `chat_friendships`: relationship lifecycle.
+- `chat_blocks`: directional block state.
+- `chat_presence`: expiring heartbeat state.
+- `chat_group_reports` and `chat_group_moderation_events`: report workflow and append-only moderation trail.
+- `chat_private.rate_limit_events`: private rate-limit ledger.
 
-- Message bodies are trimmed, non-empty, and limited to 4,000 characters.
-- Each send request carries a client-generated idempotency key; repeated requests with the same key do not append a second message.
-- Message ordering is deterministic by timestamp and message ID. History pagination uses a stable (createdAt, id) cursor.
-- A message is labelled saved_locally only after the browser storage write succeeds.
-- Browser-local data is scoped to that browser profile/device. It is not visible to other players, not backed up by the app, and not synchronized across devices.
-- No authentication, remote API, Supabase client, database write, or production credential is used by this adapter.
-- Storage errors are surfaced while preserving the draft; retry reuses the same client request ID. Corrupt or unsupported data is preserved and can be downloaded before an explicitly confirmed reset.
-- Playwright browser tests cover message send, refresh persistence, conversation switching, mobile navigation/composition, and transient storage write failure/retry.
-- localStorage read-modify-write is not a cross-tab transaction. Concurrent tabs can race and overwrite one another; this is acceptable only for the current single-browser preview and must not be treated as a multi-user store.
+All exposed Chat tables have RLS enabled. Direct-message writes and social/group mutations use narrowly scoped RPC entry points; application UI is not an authorization boundary. Database policies and RPCs remain the authoritative permission layer.
 
-The local adapter must be replaced or wrapped by a separately reviewed server adapter before any message is represented as delivered or shared with another player. Local storage must never be treated as an authorization boundary or source of trusted sender identity.
+**Migration source-of-truth task:** the Non-Production database currently contains social/group migrations beyond the original three Chat migrations tracked in this repository. Those already-applied migration definitions must be reconciled into versioned repository files before the project relies on a clean environment rebuild. Do not reapply already-applied migrations to the existing Non-Production database.
 
-## 4.2 Remote persistence contract (draft)
+## 6. Application routes and behavior
 
-See [Chat persistence contract draft](decisions/0005-chat-persistence-contract.md). The draft is for architecture review only; it is not an approved backend implementation or permission to access Supabase.
+- `/`: authenticated server-backed chat, direct and group conversation history, message composer, and realtime subscription.
+- `/login`: email/password authentication.
+- `/auth/callback`: PKCE callback.
+- `/forgot-password` and `/reset-password`: password recovery.
+- `/community`: discoverable player search, friend requests, friends, blocks, profile/privacy controls, group creation, and group member role management.
+- `/realtime-probe` and `/test-chat`: development-only tools; retain their environment boundary.
 
-## 5. Logical components
+Local preview data must never be represented as shared or server-persisted.
 
-### Web client
-Responsive conversation list, conversation detail, message composer, auth screens, and accessible loading/empty/error states. The client is an untrusted presentation layer.
+## 7. Messaging and realtime
 
-### Server authorization boundary
-Server components, route handlers, and server actions validate the user session and derive the principal from trusted claims. Every chat operation is scoped to that principal.
+- Sender identity is derived from verified Auth claims.
+- Message body is trimmed, non-empty, and limited to 4,000 characters.
+- Each logical send uses one client idempotency UUID, reused on retry.
+- A successful database commit is the point at which the message is considered persisted.
+- Message history is bounded and ordered deterministically by timestamp and ID.
+- Realtime is an optimization, not the source of truth. On subscription/reconnect, reload persisted history and deduplicate events.
+- Realtime message delivery must remain subject to the same member-scoped SELECT authorization.
+- Group conversations use the same persisted message stream, with group-specific member roles.
 
-### Chat domain
-Conversation creation, membership, message validation, idempotency, ordering, and lifecycle rules. Keep domain rules independent from UI components.
+## 8. Social and community behavior
 
-### Persistence
-Relational chat-owned tables with constraints, indexes, and RLS. Every exposed table must have RLS enabled and policies matching the actual relationship model. RLS is not replaced by hidden UI controls or authenticated-role-only policies.
+- Search exposes only opt-in public username/display name fields; never expose email.
+- Friend requests have explicit incoming/outgoing state transitions.
+- Friendships are stored as canonical UUID pairs.
+- Blocks are directional and must prevent discovery, friend requests, and new direct-message initiation as enforced by server logic.
+- Presence is approximate and expires; it is not authoritative game state.
+- Presence visibility is controlled by profile privacy fields and friend-scoped RPC results.
+- Group roles are owner, admin, moderator, and member. Privileged operations must be enforced in database RPCs, not merely hidden in UI.
+- Reports do not reveal reporter identity to group moderators; moderation decisions are recorded in an append-only event table.
 
-### Realtime (later)
-Delivers authorized events only to conversation members. Realtime is an optimization, not the source of truth; clients recover missed events from paginated history.
+## 9. Security and reliability
 
-## 6. Initial direct-message data model (proposal only)
-
-A minimal first pass may use:
-- `chat_profiles`: one row keyed by Auth UUID; display-only fields.
-- `conversations`: UUID, direct type, timestamps, lifecycle state.
-- `conversation_members`: conversation UUID, Auth UUID, joined/left timestamps, last_read_at; unique pair.
-- `messages`: UUID, conversation UUID, sender Auth UUID, body, timestamps, deletion state, client idempotency key.
-
-Before migration creation, review:
-- Whether direct conversation identity is represented by a canonical pair key or another race-safe uniqueness strategy.
-- How membership policies avoid recursive RLS dependencies.
-- Whether clients can write membership rows directly or only through a narrowly authorized server operation.
-- How message sender identity is constrained to `auth.uid()`.
-- Whether updates include both `USING` and `WITH CHECK` so ownership cannot be reassigned.
-- Stable chronological pagination and indexes.
-- Message length, retention, deletion, and idempotency semantics.
-
-This is a proposal, not authorization to create or apply remote migrations.
-
-## 7. Request flow
-
-1. Browser submits a request using its secure application session.
-2. Server validates the session against the configured trusted Supabase project.
-3. Server derives the principal from verified claims.
-4. Input is validated and bounded.
-5. Authorization checks conversation membership and applicable block/role rules.
-6. Database constraints and RLS enforce the allowed operation.
-7. A successful commit is the point at which the message is considered persisted.
-8. Realtime may notify authorized recipients after commit; clients reconcile against persisted history.
-
-## 8. Reliability and correctness
-
-- Sending is idempotent using a client-generated request key.
+- Every exposed table must have RLS enabled and least-privilege grants.
+- Security-definer helpers stay in the non-exposed `chat_private` schema, use a fixed empty `search_path`, and derive the actor from `auth.uid()`.
+- Public RPC wrappers use constrained grants; anonymous execution is revoked.
+- Rate limits are keyed by verified Auth UUID.
 - Do not show a failed/pending message as delivered.
-- Paginate history with a stable cursor and deterministic ordering.
-- Prevent duplicate direct threads under concurrent creation.
-- Realtime events can be missed; history fetch must recover state.
-- Presence, when added, is ephemeral and approximate, not authoritative game state.
+- Realtime events may be missed; persisted history must recover state.
+- Profile fields are presentation data only and must never authorize operations.
+- Group ownership and moderator capabilities must be validated on every mutation.
 
-## 9. Delivery stages
+## 10. Delivery stages
 
-1. Repository baseline and responsive mock shell.
-2. Authentication and protected server boundary.
-3. Reviewed chat schema/RLS design and isolated non-production provisioning.
-4. Direct-message persistence and two-test-user authorization tests.
-5. Friends, blocks, presence, groups.
-6. Media and notifications after privacy, abuse, and cost review.
-7. Production integration only after explicit approval and release review.
+1. Foundation and responsive shell — implemented.
+2. Local and server-backed Chat Engine — implemented; final acceptance deferred.
+3. Authentication and canonical identity — main implementation exists; account/session settings and production identity handoff remain.
+4. Direct-message backend, RLS, and rate limits — implemented in Non-Production; migration-source reconciliation remains.
+5. Message realtime — implemented; broader conversation/social presence events remain.
+6. Social & Community — player search, friend lifecycle, block/unblock, profile privacy, group creation/member/role UI now connected; invitations, lifecycle polish, moderation UI, and realtime relationship updates remain.
+7. Media and notifications — planned.
+8. Security operations and production preparation — planned; production integration requires separate approval.
 
-## 10. Explicit non-goals
+## 11. Implementation-first execution policy
+
+The current project execution pass prioritizes implementing all roadmap features. Do not run unit, integration, E2E, browser, manual, QA, or release tests during this pass. Preserve test files and CI configuration. Once implementation phases are complete, run the deferred verification and QA phase before any production approval.
+
+## 12. Explicit non-goals
 
 - Firebase Auth, Firestore, Firebase Storage, or Firebase Cloud Messaging.
 - A second player-account database.
 - Game-world mutation APIs.
-- Voice/video calls, global public channels, AI chat, or push delivery in the initial MVP.
-- Production database/Auth changes without separate approval.
-- Claims of end-to-end functionality based only on a successful build or static preview.
+- Voice/video calls, public global channels, AI chat, or push delivery without separate approval.
+- Production database/Auth changes without separate explicit approval.
