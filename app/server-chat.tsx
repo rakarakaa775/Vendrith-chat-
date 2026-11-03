@@ -21,6 +21,7 @@ type Conversation = {
   otherUserId: string;
   members: ConversationMember[];
   messages: Message[];
+  unreadCount: number;
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
 
@@ -51,7 +52,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     const profiles = new Map(((profileRows ?? []) as { conversation_id: string; user_id: string; username: string; display_name: string }[])
       .map((profile) => [`${profile.conversation_id}:${profile.user_id}`, profile]));
 
-    const rows = await Promise.all(ids.map(async (id) => {
+    const [rows, unreadResult] = await Promise.all([Promise.all(ids.map(async (id) => {
       const [conversationResult, memberResult, messageResult] = await Promise.all([
         supabase.from("chat_conversations").select("id,kind,title,created_at").eq("id", id).single(),
         supabase.from("chat_members").select("user_id,role").eq("conversation_id", id),
@@ -72,9 +73,13 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         created_at: conversationResult.data.created_at,
         otherUserId: other?.user_id ?? "unknown",
         members,
-        messages: ((messageResult.data ?? []) as Message[]).reverse()
+        messages: ((messageResult.data ?? []) as Message[]).reverse(),
+        unreadCount: 0
       };
-    }));
+    })), supabase.rpc("chat_list_unread_counts")]);
+    if (unreadResult.error) throw unreadResult.error;
+    const unreadByConversation = new Map(((unreadResult.data ?? []) as { conversation_id: string; unread_count: number }[]).map((row) => [row.conversation_id, Number(row.unread_count)]));
+    rows.forEach((row) => { row.unreadCount = unreadByConversation.get(row.id) ?? 0; });
     rows.sort((a, b) => (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(a.messages.at(-1)?.created_at ?? a.created_at));
     setConversations(rows);
     setActiveId((current) => rows.some((row) => row.id === current) ? current : rows[0]?.id ?? "");
@@ -91,6 +96,22 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   }, [loadConversations]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Reading is recorded server-side against the authenticated membership row.
+  useEffect(() => {
+    if (!activeId) return;
+    const supabase = createSupabaseBrowserClient();
+    let cancelled = false;
+    void supabase.rpc("chat_mark_conversation_read", { p_conversation_id: activeId }).then(({ error: readError }) => {
+      if (cancelled) return;
+      if (readError) {
+        setError(readError.message);
+        return;
+      }
+      setConversations((current) => current.map((item) => item.id === activeId ? { ...item, unreadCount: 0 } : item));
+    });
+    return () => { cancelled = true; };
+  }, [activeId]);
 
   // Subscribe only to the active conversation. Postgres Changes applies the
   // existing chat_messages SELECT grant and member-only RLS policy per user.
@@ -200,7 +221,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <section className="backend-identity"><strong>{email ?? "Verified test player"}</strong><code>{userId}</code><span>Verified Supabase Auth identity · Non-production only</span></section>
     <section className="backend-create"><h2>Start a direct conversation</h2><form onSubmit={createConversation}><input aria-label="Recipient player UUID" placeholder="Other test player's Auth UUID" value={recipientId} onChange={(event) => setRecipientId(event.target.value)} /><button disabled={busy || !recipientId.trim()}>Create / open</button></form></section>
     <div className="backend-columns">
-      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small></button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
+      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
         {active && <><p className="backend-id">Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
