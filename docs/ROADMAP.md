@@ -95,8 +95,8 @@
 - [x] Discoverability and presence privacy controls (online / last seen). Friend-request permissions remain open.
 - [x] Group creation with friend selection, leave, add member, and member removal controls; invitations and join flow remain open.
 - [x] Group role management controls for owner/admin/moderator/member, backed by server-side RPC permissions.
-- [ ] Admin/moderator management polish and safe ownership transfer.
-- [ ] Group rename, description, avatar metadata, close/archive, and deletion policy.
+- [x] Admin/moderator management controls and owner-initiated ownership transfer; [ ] deeper audit-history presentation.
+- [x] Group rename and description metadata; [ ] avatar upload, close/archive, and deletion policy.
 - [x] Backend group report workflow and append-only moderation event table.
 - [x] Community moderation report submission, report review, dismiss, and member-removal controls; audit-history presentation remains open.
 
@@ -159,3 +159,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added cursor-based loading of older messages in 50-message pages while retaining the latest-message window.
 
 - [x] Added per-message reactions with server-side membership authorization and a fixed emoji allow-list.
+
+- [x] Added owner/admin group name and description editing, plus explicit owner transfer (the former owner becomes admin).
