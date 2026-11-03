@@ -24,7 +24,7 @@ type FriendRequest = {
 type BlockedUser = { blocked_user_id: string; username: string; display_name: string; blocked_at: string };
 type Presence = { friend_user_id: string; is_online: boolean; last_seen_at: string | null };
 type GroupMember = { user_id: string; role: "owner" | "admin" | "moderator" | "member"; username: string; display_name: string };
-type GroupConversation = { id: string; title: string; description: string; avatar_url: string | null; created_at: string; members: GroupMember[] };
+type GroupConversation = { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string; members: GroupMember[] };
 type GroupReport = { report_id: string; target_user_id: string | null; message_id: string | null; category: string; details: string; created_at: string };
 type Tab = "discover" | "friends" | "requests" | "blocked" | "groups" | "profile";
 
@@ -70,7 +70,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
       supabase.rpc("chat_list_friend_requests"),
       supabase.rpc("chat_list_blocked_users"),
       supabase.rpc("chat_list_friend_presence"),
-      supabase.from("chat_conversations").select("id,title,description,avatar_url,created_at").eq("kind", "group").order("created_at", { ascending: false })
+      supabase.from("chat_conversations").select("id,title,description,avatar_url,closed_at,created_at").eq("kind", "group").order("created_at", { ascending: false })
     ]);
     const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult].find((item) => item.error);
     if (failed?.error) throw failed.error;
@@ -88,7 +88,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
     setRequests((requestsResult.data ?? []) as FriendRequest[]);
     setBlocked((blockedResult.data ?? []) as BlockedUser[]);
     setPresence((presenceResult.data ?? []) as Presence[]);
-    const groupRows = (groupsResult.data ?? []) as { id: string; title: string; description: string; avatar_url: string | null; created_at: string }[];
+    const groupRows = (groupsResult.data ?? []) as { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string }[];
     const expandedGroups = await Promise.all(groupRows.map(async (group) => {
       const [membersResult, profilesResult] = await Promise.all([
         supabase.from("chat_members").select("user_id,role").eq("conversation_id", group.id),
@@ -417,7 +417,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
                 const canManage = myRole === "owner" || myRole === "admin";
                 const canModerate = canManage || myRole === "moderator";
                 return <article className="community-group-card" key={group.id}>
-                  <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}</span>{group.description && <p>{group.description}</p>}</div><div>{(myRole === "owner" || myRole === "admin") && <button className="community-subtle-button" type="button" onClick={() => void editGroupMetadata(group)} disabled={Boolean(busy)}>Edit details</button>}<button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div></div>
+                  <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}{group.closed_at ? " · Closed" : ""}</span>{group.description && <p>{group.description}</p>}</div><div>{(myRole === "owner" || myRole === "admin") && !group.closed_at && <button className="community-subtle-button" type="button" onClick={() => void editGroupMetadata(group)} disabled={Boolean(busy)}>Edit details</button>}{myRole === "owner" && !group.closed_at && <button className="community-danger-button" type="button" onClick={() => { if (window.confirm("Close this group for everyone? Members will keep read access, but new messages will be blocked.")) void perform(`close-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_close_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "Group closed. Members retain read access."); }} disabled={Boolean(busy)}>Close group</button>}<button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div></div>
                   {group.members.map((member) => <div className="community-group-member" key={member.user_id}>
                     <span>{member.display_name} <small>@{member.username}</small></span>
                     <strong>{member.role}</strong>
