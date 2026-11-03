@@ -1,8 +1,8 @@
 # Vendrith Chat — Roadmap
 
-**Last reviewed:** 2026-11-01
-**Current phase:** Phase 2 — Chat Engine
-**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine and authenticated main-route server-chat UI are implemented on `feat/chat-engine-server-ui`; typecheck, unit tests, local-preview browser tests, dependency audit, and production build pass. Live Auth and authenticated two-player database verification remain pending.
+**Last reviewed:** 2026-11-03
+**Current phase:** Phase 6 — Social & Community
+**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on `feat/chat-engine-server-ui`; browser acceptance with two real Non-Production accounts is pending.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -32,7 +32,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 2 — Chat Engine
 
-**Status: Local engine and authenticated server-chat UI implemented; live non-production verification remains open**
+**Status: Core engine and authenticated server-chat UI implemented; remaining automated authenticated E2E is open**
 
 - [x] Define message validation, stable ordering, cursor pagination, and client idempotency contracts.
 - [x] Implement an injectable local storage adapter with versioned browser storage; no network or Supabase dependency.
@@ -48,54 +48,65 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Implement non-production-only Supabase Auth SSR clients, middleware claim verification, email/password sign-in/sign-up, PKCE callback, and sign-out.
 - [ ] Verify Auth end-to-end with a dedicated non-production test account, including sign-in, refresh, logout, and email-confirmation callback.
 - [x] Review the existing E2E schema and apply the isolated `chat_messaging_core_v1` migration to non-production with explicit grants/RLS.
-- [x] Implement the authenticated main Chat UI against Chat RPCs and member-scoped message history; latest 50 messages per conversation are loaded with manual refresh (live Auth/database verification remains pending).
+- [x] Implement the authenticated main Chat UI against Chat RPCs and member-scoped message history; latest 50 messages per conversation are loaded with manual refresh (owner-reported live two-account delivery and persistence are recorded; automated authenticated E2E remains pending).
 - [ ] Test authenticated conversation creation, read isolation, idempotent send, and two-player delivery using dedicated non-production accounts. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
 
-**Current verification (2026-11-02):** 19 unit tests pass; Playwright local-preview tests pass (5 passed, 1 non-production Auth test skipped without explicit test configuration); TypeScript and production build pass; `npm audit --audit-level=low` reports zero vulnerabilities. The authenticated server-chat UI is wired into the main route, but the browser tests do not yet exercise live Supabase conversations. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
+**Current verification (2026-11-03):** 24 unit tests pass; Playwright local-preview tests pass (5 passed, 1 authenticated redirect test skipped without explicit E2E configuration); typecheck and production build pass. Owner-reported two-account chat delivery, persistence, and manual connection recovery are recorded in the Phase 3 acceptance report. An automated authenticated two-account server-chat E2E remains pending.
 
 **Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
 
 ## Phase 3 — Authentication & Identity
 
-**Status: Planned; contract documented**
+**Status: Authentication implemented; acceptance partially verified**
 
 - Use verified Supabase Auth `user.id` / JWT `sub` as the canonical player identity.
 - Implement request-scoped Supabase SSR clients and secure cookie/session handling.
-- Implement sign-in, registration, callback, logout, and protected server routes.
-- Test invalid, expired, anonymous, and cross-user identity cases using isolated test identities.
+- [x] Implement sign-in, registration, callback, logout, and protected server routes.
+- [x] Verify unauthenticated redirect and login/recovery routes in the explicit Non-Production E2E run.
+- [x] Record owner-reported sign-in and two-account manual acceptance.
+- [ ] Complete automated authenticated two-account server-chat E2E and remaining negative session cases.
 
 **Exit criteria:** server-verified identity gates the chat application; negative identity tests pass in non-production.
 
 ## Phase 4 — Backend & Database
 
-**Status: Planned; schema proposal only**
+**Status: Non-Production chat schema implemented; authorization checks recorded**
 
-- Design chat-owned profiles, conversations, membership, and messages.
-- Review constraints, indexes, membership authorization, RLS, grants, and migration/rollback strategy.
-- Provision and test only in the explicitly approved non-production project.
-- Keep all World of Vendrith game-domain records outside Chat ownership.
+- [x] Implement chat-owned conversations, membership, messages, private rate limits, and social graph tables.
+- [x] Review constraints, indexes, membership authorization, RLS, grants, and migration history.
+- [x] Verify member/non-member read isolation and non-member send denial in Non-Production.
+- [x] Keep all World of Vendrith game-domain records outside Chat ownership; no Production changes.
 
 **Exit criteria:** reviewed schema and RLS policies pass cross-user and non-member denial tests in non-production.
 
 ## Phase 5 — Realtime
 
-**Status: Planned**
+**Status: Realtime implemented; live negative authorization check remains open**
 
-- Deliver committed messages to authorized conversation members.
-- Recover missed events from paginated persisted history.
-- Test reconnect, duplicate events, ordering, and removed-member access.
+- [x] Deliver committed messages to authorized conversation members using member-scoped Postgres Changes.
+- [x] Recover missed events from persisted history after resubscription.
+- [x] Verify manual Android connection-loss detection and automatic recovery/catch-up.
+- [x] Cover event deduplication and deterministic ordering with unit tests.
+- [ ] Complete live non-member WebSocket negative test with a member positive control.
 
 **Exit criteria:** realtime is consistent with persisted history and cannot bypass membership authorization.
 
 ## Phase 6 — Social & Community
 
-**Status: Planned**
+**Status: P0 social graph backend and authenticated UI implemented; browser acceptance pending**
 
-- Friend requests, accept/reject/remove, and block/unblock.
-- Presence with expiry and privacy controls.
-- Group conversations, membership lifecycle, and role permissions.
+- [x] Opt-in player profiles and limited-field player search.
+- [x] Friend requests, accept/decline/cancel/remove, and block/unblock.
+- [x] Enforce blocks against discovery, friend requests, direct-conversation create/reopen, and new direct messages.
+- [x] Add authenticated Friends & Community route with profile, search, request, friend, and block management.
+- [ ] Complete live browser acceptance with two real Non-Production accounts and automated authenticated social-flow E2E.
+- [ ] Presence with expiry and privacy controls.
+- [ ] Group conversations, membership lifecycle, and admin/moderator role permissions.
+- [ ] Reporting and moderation workflows.
 
-**Exit criteria:** relationship transitions, privacy, and group authorization tests pass.
+**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md).
+
+**Exit criteria:** relationship transitions and privacy tests pass in both transactional database verification and authenticated browser flows; group authorization tests pass before Phase 6 is closed.
 
 ## Phase 7 — Media & Advanced Features
 
