@@ -102,7 +102,7 @@
 
 ## Phase 7 — Media & Advanced Features
 **Status:** Notifications, reactions, replies, message edit/delete, and inbox are implemented; private media/storage, pinned messages, accessibility, and localization remain.
-- [ ] Private image/file upload and download.
+- [x] Private image/file upload and download in the authenticated conversation view.
 - [x] MIME allow-list, 10 MB per-file limit, generated storage paths, 100 MB account quota, and 25 MB daily upload quota enforced before upload.
 - [x] Private Storage reads restricted by RLS to members of the owning conversation; uploads require a short-lived pending metadata authorization.
 - [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers cover incoming messages, friend requests, group additions, and moderator report alerts.
