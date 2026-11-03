@@ -1,129 +1,137 @@
-# Vendrith Chat — Roadmap
+# Vendrith Chat — Implementation Roadmap
 
-**Last reviewed:** 2026-11-01
-**Current phase:** Phase 2 — Chat Engine
-**Current status:** Phase 1 foundation is implemented and CI-verified; mobile and Android Chrome desktop-mode visuals were checked, while a physical desktop browser remains unverified. Phase 2 local chat engine and authenticated main-route server-chat UI are implemented on `feat/chat-engine-server-ui`; typecheck, unit tests, local-preview browser tests, dependency audit, and production build pass. Live Auth and authenticated two-player database verification remain pending.
+**Last reviewed:** 2026-11-03
+**Active branch:** main
+**Execution mode:** Implementation-first. All test execution, QA runs, manual acceptance checks, and verification gates are deferred until every planned implementation phase is complete.
+**Environment boundary:** Vendrith Non-Production E2E only (npvlokuszipgwrdipeoi). No production World of Vendrith Auth, schema, data, storage, or settings changes.
 
-A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
+## Working rules
+
+- Implement in dependency order. Do not run unit, E2E, browser, manual, QA, or release tests during this implementation pass.
+- Keep existing test files and CI definitions; testing is postponed, not removed from the final release process.
+- Do not mark features verified or production-ready merely because code exists.
+- Preserve existing work and data. Do not delete user data, reset databases, overwrite unrelated files, or switch branches automatically.
+- Keep Chat isolated from World of Vendrith game-domain data. Canonical player identity remains the trusted Supabase Auth UUID.
+- Apply migrations only to the approved Non-Production E2E project. Never apply them to production.
+- No paid infrastructure, external providers, voice/video, AI chat, or game-world mutation without separate approval.
+
+## Current implementation snapshot
+
+### Implemented in repository / recorded as applied in Non-Production
+- Responsive Next.js App Router / React / TypeScript application shell and mobile navigation.
+- Email/password Auth screens, Supabase SSR clients, middleware session handling, PKCE callback, password reset routes, and protected main route.
+- Chat-owned direct conversation, membership, and message tables with RLS, constrained read grants, and RPC-only writes.
+- Direct conversation creation and idempotent message-send RPCs.
+- Non-Production rate limiting for conversation creation and message sending.
+- Realtime publication migration for chat messages and client subscription/recovery logic.
+- Local preview remains available without backend configuration; authenticated main route uses the server-backed chat component.
+
+### Product capabilities still to implement
+- Social graph: player discovery, friend requests, accept/reject/cancel/remove, blocks/unblock, and relationship-aware direct messaging.
+- Chat-owned profile presentation and preferences, preserving canonical Auth identity.
+- Presence and privacy controls.
+- Group conversations, member lifecycle, roles, and moderation permissions.
+- Media attachments and in-app notifications/preferences.
+- Operational controls, retention workflows, and production integration package.
 
 ## Phase 1 — Foundation
-
-**Status: Partially verified; local foundation is ready, external/release checks remain**
-
-- [x] Confirm Vendrith Chat is a separate repository and owns chat-domain data only.
-- [x] Define the eventual shared Supabase identity direction without connecting to production.
-- [x] Select Next.js App Router, React, and TypeScript; use the Flutter reference selectively for interaction patterns only.
-- [x] Build the responsive app shell, conversation list, conversation detail, mobile list/detail navigation, and conversation search.
-- [x] Clearly label sample conversations and disabled composer as preview-only; no claim of message delivery or persistence.
-- [x] Add environment example with placeholders only.
-- [x] Add five dependency-free unit tests for conversation filtering.
-- [x] Generate an npm lockfile and verify a clean `npm ci` in an isolated temporary directory.
-- [x] Pin the vulnerable transitive PostCSS dependency through an npm override; `npm audit` reports zero vulnerabilities.
-- [x] Configure CI to use `npm ci`, dependency audit, typecheck, unit tests, and production build.
-- [x] Set English as the primary application language (`lang="en"`); additional language support remains deferred.
-- [x] Track the reviewed `package-lock.json` and generated `next-env.d.ts` in Git and synchronize the foundation changes to GitHub.
-- [x] Verify the running interface on mobile Chrome at two viewport sizes and in Chrome Android desktop mode.
-- [ ] Verify the running interface on a physical desktop browser/monitor.
-- [x] Confirm the updated GitHub Actions workflow passes on the synchronized commit.
-
-**Verification evidence:** see [Foundation verification — 2026-11-01](audits/FOUNDATION-VERIFICATION-2026-11-01.md).
-
-**Exit criteria:** reproducible clean install from the committed lockfile; CI audit, typecheck, unit tests, and production build pass; local app starts; responsive UI is verified in mobile and desktop browsers; preview-only behavior is explicit. No real authentication, database access, or message delivery is implied by this phase.
+**Status:** Existing foundation retained.
+- [x] Separate repository and chat-domain ownership boundary.
+- [x] Next.js App Router, React, TypeScript, lockfile, responsive application shell.
+- [x] English as primary application language.
+- [x] Mobile conversation list/detail navigation and preview mode.
+- [x] Environment placeholders and CI workflow.
 
 ## Phase 2 — Chat Engine
-
-**Status: Local engine and authenticated server-chat UI implemented; live non-production verification remains open**
-
-- [x] Define message validation, stable ordering, cursor pagination, and client idempotency contracts.
-- [x] Implement an injectable local storage adapter with versioned browser storage; no network or Supabase dependency.
-- [x] Enable the composer and conversation switching against the local adapter.
-- [x] Clearly label locally saved messages; do not imply delivery to another player or server synchronization.
-- [x] Add domain tests for validation, message creation, duplicate requests, ordering, pagination, reload persistence, and unknown conversations.
-- [x] Add a visible pending-save state, failed-save message, and retry action that reuses the same idempotency key.
-- [x] Detect corrupt/unsupported local data without overwriting it; offer raw backup download and an explicit-confirmation reset.
-- [x] Test retry after transient storage write failure, corrupt data preservation, schema validation, and reset confirmation.
-- [x] Add Playwright browser tests for send, refresh persistence, conversation switching, mobile navigation, and transient storage failure/retry.
-- [x] Verify send, refresh persistence, and conversation switching manually in Android Chrome; owner confirmed the test message remained after refresh and after switching away and back.
-- [x] Approve the chat persistence contract as the basis for non-production backend work; production remains explicitly excluded.
-- [x] Implement non-production-only Supabase Auth SSR clients, middleware claim verification, email/password sign-in/sign-up, PKCE callback, and sign-out.
-- [ ] Verify Auth end-to-end with a dedicated non-production test account, including sign-in, refresh, logout, and email-confirmation callback.
-- [x] Review the existing E2E schema and apply the isolated `chat_messaging_core_v1` migration to non-production with explicit grants/RLS.
-- [x] Implement the authenticated main Chat UI against Chat RPCs and member-scoped message history; latest 50 messages per conversation are loaded with manual refresh (live Auth/database verification remains pending).
-- [ ] Test authenticated conversation creation, read isolation, idempotent send, and two-player delivery using dedicated non-production accounts. Draft: [Chat Persistence Contract](decisions/0005-chat-persistence-contract.md).
-
-**Current verification (2026-11-02):** 19 unit tests pass; Playwright local-preview tests pass (5 passed, 1 non-production Auth test skipped without explicit test configuration); TypeScript and production build pass; `npm audit --audit-level=low` reports zero vulnerabilities. The authenticated server-chat UI is wired into the main route, but the browser tests do not yet exercise live Supabase conversations. Manual Android Chrome verification by the project owner passed for message composition, local save indicator, refresh persistence, and conversation switching. The owner confirmed the test message remained visible after returning to the original conversation.
-
-**Exit criteria:** deterministic chat-domain behavior and tests pass against a local/test adapter; reload persistence and UI behavior are verified; no production identity or database dependency is required.
+**Status:** Core local and server-backed direct-message paths implemented; final validation deferred.
+- [x] Local versioned Chat Engine adapter and message validation/idempotency behavior.
+- [x] Supabase-backed direct-message UI on authenticated main route.
+- [x] Conversation creation and message-send RPC integration.
+- [x] Server-backed history loading and bounded recent-message retrieval.
+- [x] Realtime message subscription, deduplication, and history refresh behavior.
+- [ ] Product-level conversation pagination, unread/read state, and lifecycle controls.
+- [ ] Consolidate local preview and authenticated remote modes behind a stable domain interface.
 
 ## Phase 3 — Authentication & Identity
-
-**Status: Planned; contract documented**
-
-- Use verified Supabase Auth `user.id` / JWT `sub` as the canonical player identity.
-- Implement request-scoped Supabase SSR clients and secure cookie/session handling.
-- Implement sign-in, registration, callback, logout, and protected server routes.
-- Test invalid, expired, anonymous, and cross-user identity cases using isolated test identities.
-
-**Exit criteria:** server-verified identity gates the chat application; negative identity tests pass in non-production.
+**Status:** Main authentication implementation exists; remaining product integration work is open.
+- [x] Supabase Auth email/password registration and sign-in UI.
+- [x] SSR clients, middleware, protected route, callback, sign-out, and password reset routes.
+- [x] Verified Auth UUID / JWT subject as canonical player identity.
+- [ ] Account/session settings UI and session/device management.
+- [ ] Chat-owned display profile editing; editable profile fields must never authorize access.
+- [ ] Document identity handoff for eventual World of Vendrith integration; production connection remains prohibited.
 
 ## Phase 4 — Backend & Database
-
-**Status: Planned; schema proposal only**
-
-- Design chat-owned profiles, conversations, membership, and messages.
-- Review constraints, indexes, membership authorization, RLS, grants, and migration/rollback strategy.
-- Provision and test only in the explicitly approved non-production project.
-- Keep all World of Vendrith game-domain records outside Chat ownership.
-
-**Exit criteria:** reviewed schema and RLS policies pass cross-user and non-member denial tests in non-production.
+**Status:** Direct-message foundation implemented in Non-Production; social and group schema remain.
+- [x] Chat-owned direct conversation, member, and message schema.
+- [x] RLS and least-privilege grants for direct-message reads and RPC writes.
+- [x] Server-derived sender identity, bounded message body, and idempotency key.
+- [x] Non-Production rate-limit ledger and enforcement.
+- [ ] Chat-owned player profile table and preferences.
+- [ ] Friend relationship/request schema and state-transition RPCs.
+- [ ] Block relationship schema and block/unblock RPCs.
+- [ ] Group conversation, membership, invitation, role, and moderation schema.
+- [ ] Notification preference and in-app notification persistence.
+- [ ] Private attachment metadata and storage authorization design.
 
 ## Phase 5 — Realtime
-
-**Status: Planned**
-
-- Deliver committed messages to authorized conversation members.
-- Recover missed events from paginated persisted history.
-- Test reconnect, duplicate events, ordering, and removed-member access.
-
-**Exit criteria:** realtime is consistent with persisted history and cannot bypass membership authorization.
+**Status:** Message realtime implementation exists; social presence and event coverage remain.
+- [x] Realtime publication for persisted chat messages in Non-Production.
+- [x] Subscribe to active conversation and reconcile incoming messages.
+- [x] Refresh persisted history after subscription and clean up subscriptions on navigation.
+- [ ] Conversation-list updates for new conversations and latest-message changes.
+- [ ] Realtime events for friend requests and relationship changes.
+- [ ] Presence channels with expiry, privacy settings, and approximate status semantics.
+- [ ] Realtime group membership and role-change events.
+- [ ] Shared reconnect/backoff lifecycle and app-wide connection status.
 
 ## Phase 6 — Social & Community
-
-**Status: Planned**
-
-- Friend requests, accept/reject/remove, and block/unblock.
-- Presence with expiry and privacy controls.
-- Group conversations, membership lifecycle, and role permissions.
-
-**Exit criteria:** relationship transitions, privacy, and group authorization tests pass.
+**Status:** Next major implementation phase.
+- [ ] Player discovery/search with safe, rate-limited lookup fields; never expose email addresses.
+- [ ] Friend request creation, incoming/outgoing lists, accept, reject, and cancel.
+- [ ] Friend list, remove friend, and relationship state synchronization.
+- [ ] Block/unblock players; define prevention of new direct-message initiation and behavior for existing conversations.
+- [ ] Privacy settings for discoverability and friend-request permissions.
+- [ ] Group creation, invitations, join/leave, and member removal.
+- [ ] Group roles: owner, admin, moderator, and member, enforced server-side.
+- [ ] Admin/moderator management and safe ownership transfer.
+- [ ] Group rename, description, avatar metadata, close/archive, and deletion policy.
+- [ ] Community moderation actions and audit trail for privileged actions.
 
 ## Phase 7 — Media & Advanced Features
+**Status:** Planned after social foundation.
+- [ ] Private image/file upload and download.
+- [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
+- [ ] Attachment access restricted to active conversation members.
+- [ ] In-app notifications and per-category preferences.
+- [ ] Notification read/unread state and deep links.
+- [ ] Evaluate push provider and cost/privacy before external push implementation.
+- [ ] Message reactions, reply context, edit/delete policy, and pinned messages.
+- [ ] Accessibility and localization foundations.
 
-**Status: Planned**
+## Phase 8 — Security, Operations & Production Preparation
+**Status:** Planned; no production connection during implementation-first work.
+- [ ] Consolidated authorization model and least-privilege database grants.
+- [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
+- [ ] Data retention, account deletion/export, backup/restore, and recovery procedures.
+- [ ] Operational logging, error reporting, observability, and incident response.
+- [ ] Performance and pagination improvements for large conversations and groups.
+- [ ] Deployment configuration and environment separation documentation.
+- [ ] Production integration plan for shared World of Vendrith identity, requiring separate explicit approval.
 
-- Private attachment upload/download with MIME, size, abuse, and lifecycle controls.
-- In-app notifications and user preferences.
-- External push delivery only after provider, privacy, and cost review.
-- Other advanced features require separate product approval.
+## Final deferred verification phase
 
-**Exit criteria:** private media access and notification preference tests pass; operational costs and retention are documented.
-
-## Phase 8 — Security, QA & Production
-
-**Status: Planned**
-
-- Independent security review, abuse/rate-limit tests, and cross-user authorization tests.
-- Accessibility, responsive browser/device, load, and recovery verification.
-- Backup/restore, retention, observability, incident, and rollback procedures.
-- Production integration only after explicit approval.
-
-**Exit criteria:** release checklist is signed off with reproducible evidence and an approved production change plan.
+Only after Phases 1–8 implementation work is complete:
+- Run unit, integration, E2E, browser, and manual tests.
+- Verify authorization with multiple isolated Non-Production identities, including denial cases.
+- Verify migrations, RLS, grants, rate limits, realtime recovery, social transitions, group permissions, media privacy, and notifications.
+- Resolve release-blocking defects and record evidence.
+- Obtain separate explicit approval before any production integration or production database change.
 
 ## Non-negotiable boundaries
 
 - The Chat repository remains separate during development and integrates through documented contracts.
-- Chat may share the canonical Supabase project eventually, but must not create a second player identity system.
+- Chat may eventually share canonical Supabase identity authority, but must not create a second player identity system.
 - No production Auth settings, SQL, migrations, RLS changes, storage buckets, or data writes without separate explicit approval.
 - No changes to World of Vendrith game data or its sign-up flow as part of Chat work.
-- No Firebase, paid managed infrastructure, voice/video, public global channels, AI chat, or game-world mutation features without separate approval.
-- Never claim end-to-end functionality based only on a successful build or static preview.
+- Never claim end-to-end functionality based only on implementation code or a successful build.
