@@ -9,7 +9,7 @@ Vendrith Chat is the standalone communication service for the World of Vendrith 
 **Default branch:** `main`
 **Primary application language:** English
 
-The app provides a local preview when backend configuration is absent and an authenticated server-backed chat experience when configured for Vendrith Non-Production E2E. The main chat includes direct and group conversations, cursor-based history, unread counters, per-user archive, reactions, replies, and live conversation previews. Community includes player discovery, friend requests, blocks, presence privacy, profile management, group metadata, ownership transfer, closure, member roles, and moderation history. A private notification inbox provides per-category preferences and realtime updates. These implementation statements do not mean the deferred final QA/release gates have passed.
+The app provides a local preview when backend configuration is absent and an authenticated server-backed chat experience when configured for Vendrith Non-Production E2E. The main chat includes direct and group conversations, cursor-based history, unread counters, per-user archive, reactions, replies, and live conversation previews. Community includes player discovery, friend requests, blocks, presence privacy, profile management, group metadata, ownership transfer, closure, member roles, and moderation history. A private notification inbox provides per-category preferences, realtime updates, and contextual links. Account settings include password change and sign-out-other-sessions controls. These implementation statements do not mean the deferred final QA/release gates have passed.
 
 ## Product direction
 
