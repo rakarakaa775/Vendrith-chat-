@@ -24,6 +24,7 @@ type Conversation = {
   messages: Message[];
   unreadCount: number;
   archivedAt: string | null;
+  closedAt: string | null;
   hasMore: boolean;
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string; replyToMessageId?: string | null };
@@ -61,7 +62,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
 
     const [rows, unreadResult] = await Promise.all([Promise.all(ids.map(async (id) => {
       const [conversationResult, memberResult, messageResult] = await Promise.all([
-        supabase.from("chat_conversations").select("id,kind,title,created_at").eq("id", id).single(),
+        supabase.from("chat_conversations").select("id,kind,title,created_at,closed_at").eq("id", id).single(),
         supabase.from("chat_members").select("user_id,role").eq("conversation_id", id),
         supabase.from("chat_messages").select("id,conversation_id,sender_id,client_message_id,body,created_at,reply_to_message_id").eq("conversation_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(50)
       ]);
@@ -83,6 +84,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         messages: ((messageResult.data ?? []) as Message[]).reverse(),
         unreadCount: 0,
         archivedAt: null,
+        closedAt: conversationResult.data.closed_at ?? null,
         hasMore: (messageResult.data ?? []).length === 50
       };
     })), supabase.rpc("chat_list_unread_counts")]);
@@ -288,7 +290,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <div className="backend-columns">
       <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
+        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}{active.closedAt ? " · Closed (read-only)" : ""}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
           const messageReactions = reactions.filter((reaction) => reaction.message_id === message.id);
           return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
             {message.reply_to_message_id && <blockquote className="message-reply-context">{active.messages.find((item) => item.id === message.reply_to_message_id)?.body ?? "Original message"}</blockquote>}<p>{message.body}</p>
@@ -299,7 +301,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
               return <button type="button" key={emoji} className={selected ? "selected" : ""} aria-label={`React with ${emoji}`} onClick={() => void toggleReaction(message.id, emoji)}>{emoji}{matching.length > 0 && <span>{matching.length}</span>}</button>;
             })}</div>
           </article>;
-        })}</div><form className="backend-composer" onSubmit={handleSend}>{replyTo && <div className="message-reply-draft"><span>Replying to: {replyTo.body.slice(0, 100)}</span><button type="button" onClick={() => setReplyTo(null)}>Cancel</button></div>}<input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+        })}</div>{!active.closedAt ? <form className="backend-composer" onSubmit={handleSend}>{replyTo && <div className="message-reply-draft"><span>Replying to: {replyTo.body.slice(0, 100)}</span><button type="button" onClick={() => setReplyTo(null)}>Cancel</button></div>}<input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form> : <p className="backend-status">This group is closed. Message history remains available in read-only mode.</p>}{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
