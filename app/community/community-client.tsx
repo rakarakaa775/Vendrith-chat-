@@ -25,6 +25,7 @@ type BlockedUser = { blocked_user_id: string; username: string; display_name: st
 type Presence = { friend_user_id: string; is_online: boolean; last_seen_at: string | null };
 type GroupMember = { user_id: string; role: "owner" | "admin" | "moderator" | "member"; username: string; display_name: string };
 type GroupConversation = { id: string; title: string; created_at: string; members: GroupMember[] };
+type GroupReport = { report_id: string; target_user_id: string | null; message_id: string | null; category: string; details: string; created_at: string };
 type Tab = "discover" | "friends" | "requests" | "blocked" | "groups" | "profile";
 
 const tabs: { id: Tab; label: string }[] = [
@@ -53,6 +54,8 @@ export default function CommunityClient({ userId }: { userId: string }) {
   const [groups, setGroups] = useState<GroupConversation[]>([]);
   const [groupTitle, setGroupTitle] = useState("");
   const [groupMemberId, setGroupMemberId] = useState("");
+  const [reportsByGroup, setReportsByGroup] = useState<Record<string, GroupReport[]>>({});
+  const [reviewGroupId, setReviewGroupId] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("Loading your community…");
@@ -192,6 +195,50 @@ export default function CommunityClient({ userId }: { userId: string }) {
       setGroupTitle("");
       setGroupMemberId("");
     }, "Group conversation created.");
+  }
+
+  async function reportGroupMember(groupId: string, memberId: string) {
+    const details = window.prompt("Describe the issue (optional, up to 1000 characters):");
+    if (details === null) return;
+    await perform(`report:${groupId}:${memberId}`, async () => {
+      const { error: rpcError } = await supabase.rpc("chat_submit_group_report", {
+        p_conversation_id: groupId,
+        p_reported_user_id: memberId,
+        p_message_id: null,
+        p_category: "other",
+        p_details: details.slice(0, 1000)
+      });
+      if (rpcError) throw rpcError;
+    }, "Group report submitted privately to moderators.");
+  }
+
+  async function loadGroupReports(groupId: string) {
+    setBusy(`reports:${groupId}`);
+    setError("");
+    try {
+      const { data, error: rpcError } = await supabase.rpc("chat_list_group_reports", { p_conversation_id: groupId });
+      if (rpcError) throw rpcError;
+      setReportsByGroup((current) => ({ ...current, [groupId]: (data ?? []) as GroupReport[] }));
+      setReviewGroupId(groupId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load group reports.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function resolveGroupReport(groupId: string, reportId: string, decision: "dismiss" | "remove_member") {
+    await perform(`resolve-report:${reportId}`, async () => {
+      const { error: rpcError } = await supabase.rpc("chat_resolve_group_report", {
+        p_report_id: reportId,
+        p_decision: decision,
+        p_note: decision === "dismiss" ? "Reviewed by group moderation." : "Member removed after report review."
+      });
+      if (rpcError) throw rpcError;
+      const { data, error: listError } = await supabase.rpc("chat_list_group_reports", { p_conversation_id: groupId });
+      if (listError) throw listError;
+      setReportsByGroup((current) => ({ ...current, [groupId]: (data ?? []) as GroupReport[] }));
+    }, decision === "dismiss" ? "Report dismissed." : "Reported member removed.");
   }
 
   async function addGroupMember(groupId: string) {
@@ -343,22 +390,37 @@ export default function CommunityClient({ userId }: { userId: string }) {
               {groups.map((group) => {
                 const myRole = group.members.find((member) => member.user_id === userId)?.role ?? "member";
                 const canManage = myRole === "owner" || myRole === "admin";
+                const canModerate = canManage || myRole === "moderator";
                 return <article className="community-group-card" key={group.id}>
                   <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}</span></div><button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div>
                   {group.members.map((member) => <div className="community-group-member" key={member.user_id}>
                     <span>{member.display_name} <small>@{member.username}</small></span>
                     <strong>{member.role}</strong>
-                    {canManage && member.user_id !== userId && <div className="community-person-actions">
-                      {(["admin", "moderator", "member"] as const).filter((role) => role !== member.role).map((role) => <button className="community-subtle-button" key={role} type="button" onClick={() => void perform(`role:${group.id}:${member.user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_set_group_member_role", { p_conversation_id: group.id, p_member_id: member.user_id, p_role: role }); if (rpcError) throw rpcError; }, `Member role changed to ${role}.`)} disabled={Boolean(busy)}>Make {role}</button>)}
-                      <button className="community-danger-button" type="button" onClick={() => void perform(`remove-member:${group.id}:${member.user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_remove_group_member", { p_conversation_id: group.id, p_member_id: member.user_id }); if (rpcError) throw rpcError; }, "Group member removed.")} disabled={Boolean(busy)}>Remove</button>
+                    {member.user_id !== userId && <div className="community-person-actions">
+                      {myRole === "owner" && (["admin", "moderator", "member"] as const).filter((role) => role !== member.role).map((role) => <button className="community-subtle-button" key={role} type="button" onClick={() => void perform(`role:${group.id}:${member.user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_set_group_member_role", { p_conversation_id: group.id, p_member_id: member.user_id, p_role: role }); if (rpcError) throw rpcError; }, `Member role changed to ${role}.`)} disabled={Boolean(busy)}>Make {role}</button>)}
+                      {canModerate && <button className="community-danger-button" type="button" onClick={() => void perform(`remove-member:${group.id}:${member.user_id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_remove_group_member", { p_conversation_id: group.id, p_member_id: member.user_id }); if (rpcError) throw rpcError; }, "Group member removed.")} disabled={Boolean(busy)}>Remove</button>}
+                      <button className="community-subtle-button" type="button" onClick={() => void reportGroupMember(group.id, member.user_id)} disabled={Boolean(busy)}>Report</button>
                     </div>}
                   </div>)}
-                  {(canManage || myRole === "moderator") && <div className="community-group-add">
+                  {canModerate && <div className="community-group-add">
                     <select value={groupMemberId} onChange={(event) => setGroupMemberId(event.target.value)} aria-label={`Choose a friend to add to ${group.title}`}>
                       <option value="">Add a friend…</option>
                       {friends.filter((friend) => !group.members.some((member) => member.user_id === friend.friend_user_id)).map((friend) => <option key={friend.friend_user_id} value={friend.friend_user_id}>{friend.display_name}</option>)}
                     </select>
                     <button type="button" onClick={() => void addGroupMember(group.id)} disabled={Boolean(busy) || !groupMemberId}>Add member</button>
+                  </div>}
+                  {canModerate && <div className="community-group-review">
+                    <button className="community-subtle-button" type="button" onClick={() => void loadGroupReports(group.id)} disabled={Boolean(busy)}>Review reports</button>
+                    {reviewGroupId === group.id && <div className="community-report-list">
+                      {(reportsByGroup[group.id] ?? []).map((report) => <div className="community-report" key={report.report_id}>
+                        <strong>{report.category}</strong><p>{report.details || "No additional details."}</p><small>{report.target_user_id ? `Reported player: ${report.target_user_id.slice(0, 8)}` : "Message report"} · {new Date(report.created_at).toLocaleString()}</small>
+                        <div className="community-person-actions">
+                          <button className="community-subtle-button" type="button" onClick={() => void resolveGroupReport(group.id, report.report_id, "dismiss")} disabled={Boolean(busy)}>Dismiss</button>
+                          {report.target_user_id && <button className="community-danger-button" type="button" onClick={() => void resolveGroupReport(group.id, report.report_id, "remove_member")} disabled={Boolean(busy)}>Remove member</button>}
+                        </div>
+                      </div>)}
+                      {(reportsByGroup[group.id] ?? []).length === 0 && <p className="community-empty">No open reports.</p>}
+                    </div>}
                   </div>}
                 </article>;
               })}
