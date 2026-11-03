@@ -11,7 +11,7 @@ type Notification = {
 type Preferences = { messages_enabled: boolean; friends_enabled: boolean; groups_enabled: boolean; moderation_enabled: boolean };
 const defaults: Preferences = { messages_enabled: true, friends_enabled: true, groups_enabled: true, moderation_enabled: true };
 
-export default function NotificationsClient() {
+export default function NotificationsClient({ userId }: { userId: string }) {
   const [items, setItems] = useState<Notification[]>([]);
   const [preferences, setPreferences] = useState<Preferences>(defaults);
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,13 @@ export default function NotificationsClient() {
 
   useEffect(() => {
     void refresh().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load notifications."));
-  }, [refresh]);
+    const channel = supabase.channel(`vendrith-notifications:${userId}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "chat_notifications", filter: `user_id=eq.${userId}`
+      }, () => { void refresh(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [refresh, supabase, userId]);
 
   async function markRead(id?: string) {
     setBusy(true); setError("");
