@@ -132,3 +132,7 @@
 .message-reactions button { display: inline-flex; align-items: center; gap: .25rem; padding: .2rem .45rem; border: 1px solid var(--border, #30303a); border-radius: 999px; background: transparent; color: inherit; font-size: .82rem; cursor: pointer; }
 .message-reactions button.selected { border-color: var(--accent, #6d5dfc); background: color-mix(in srgb, var(--accent, #6d5dfc) 16%, transparent); }
 .message-reactions button span { font-size: .72rem; opacity: .8; }
+
+.message-reply-context { margin: 0 0 .45rem; padding: .45rem .65rem; border-left: 3px solid var(--accent, #6d5dfc); border-radius: .25rem; opacity: .75; font-size: .88rem; }
+.message-reply-button { margin-top: .5rem; padding: .2rem .45rem; border: 0; background: transparent; color: inherit; opacity: .7; cursor: pointer; font-size: .78rem; }
+.message-reply-draft { flex: 1 1 100%; display: flex; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border-left: 3px solid var(--accent, #6d5dfc); background: var(--panel, #17171d); }
