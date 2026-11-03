@@ -150,3 +150,5 @@
 .account-password-form { display: grid; gap: .9rem; max-width: 480px; }
 .account-password-form label { display: grid; gap: .4rem; }
 .account-password-form input { width: 100%; padding: .75rem; border: 1px solid var(--border, #30303a); border-radius: .65rem; background: transparent; color: inherit; }
+
+.backend-attachments{display:grid;gap:7px;margin:10px 0}.backend-attachments button{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 12px;border:1px solid #344b3d;border-radius:8px;background:#17271f;color:#d9ebd6;text-align:left;font-size:11px}.backend-attachments button small{color:#91a69a;white-space:nowrap}.backend-composer input[type=file]{height:auto;padding:8px;font-size:10px}
