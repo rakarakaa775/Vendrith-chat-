@@ -80,7 +80,7 @@
 - [x] Realtime publication for persisted chat messages in Non-Production.
 - [x] Subscribe to active conversation and reconcile incoming messages.
 - [x] Refresh persisted history after subscription and clean up subscriptions on navigation.
-- [ ] Conversation-list updates for new conversations and latest-message changes.
+- [x] Realtime latest-message previews and unread badge updates across all visible conversations; newly created conversations still refresh through the standard list reload.
 - [ ] Realtime events for friend requests and relationship changes.
 - [ ] Presence channels with expiry, privacy settings, and approximate status semantics.
 - [ ] Realtime group membership and role-change events.
@@ -165,3 +165,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added group-added notifications for invited members and moderation-report alerts for group owners/admins/moderators.
 
 - [x] Added a private Realtime subscription filtered to the authenticated user’s notification rows.
+
+- [x] Expanded realtime subscriptions from only the active thread to all visible conversations, with duplicate-safe unread increments.
