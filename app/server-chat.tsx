@@ -11,6 +11,7 @@ type Message = {
   client_message_id: string;
   body: string;
   created_at: string;
+  reply_to_message_id?: string | null;
 };
 type ConversationMember = { user_id: string; role: string; username: string; display_name: string };
 type Conversation = {
@@ -25,7 +26,7 @@ type Conversation = {
   archivedAt: string | null;
   hasMore: boolean;
 };
-type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
+type PendingMessage = { conversationId: string; clientMessageId: string; body: string; replyToMessageId?: string | null };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
 
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
@@ -33,6 +34,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const [activeId, setActiveId] = useState("");
   const [recipientId, setRecipientId] = useState("");
   const [draft, setDraft] = useState("");
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -201,13 +203,18 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     if (busy) return;
     setBusy(true); setError("");
     try {
-      const { error: rpcError } = await createSupabaseBrowserClient().rpc("chat_send_message", {
-        p_conversation_id: request.conversationId,
-        p_client_message_id: request.clientMessageId,
-        p_body: request.body
-      });
+      const { error: rpcError } = await createSupabaseBrowserClient().rpc(
+        request.replyToMessageId ? "chat_send_message_with_reply" : "chat_send_message",
+        {
+          p_conversation_id: request.conversationId,
+          p_client_message_id: request.clientMessageId,
+          p_body: request.body,
+          ...(request.replyToMessageId ? { p_reply_to_message_id: request.replyToMessageId } : {})
+        }
+      );
       if (rpcError) throw rpcError;
       setDraft((current) => current === request.body ? "" : current);
+      setReplyTo(null);
       setFailedRequest(null);
       await loadConversations();
       setStatus("Message committed by the non-production server.");
@@ -266,7 +273,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!activeId || !draft.trim() || busy) return;
-    void sendMessage({ conversationId: activeId, clientMessageId: crypto.randomUUID(), body: draft });
+    void sendMessage({ conversationId: activeId, clientMessageId: crypto.randomUUID(), body: draft, replyToMessageId: replyTo?.id ?? null });
   }
 
   const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
@@ -284,15 +291,15 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
           const messageReactions = reactions.filter((reaction) => reaction.message_id === message.id);
           return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
-            <p>{message.body}</p>
+            {message.reply_to_message_id && <blockquote className="message-reply-context">{active.messages.find((item) => item.id === message.reply_to_message_id)?.body ?? "Original message"}</blockquote>}<p>{message.body}</p>
             <small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small>
-            <div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
+            <button type="button" className="message-reply-button" onClick={() => setReplyTo(message)}>Reply</button><div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
               const matching = messageReactions.filter((reaction) => reaction.emoji === emoji);
               const selected = matching.some((reaction) => reaction.user_id === userId);
               return <button type="button" key={emoji} className={selected ? "selected" : ""} aria-label={`React with ${emoji}`} onClick={() => void toggleReaction(message.id, emoji)}>{emoji}{matching.length > 0 && <span>{matching.length}</span>}</button>;
             })}</div>
           </article>;
-        })}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+        })}</div><form className="backend-composer" onSubmit={handleSend}>{replyTo && <div className="message-reply-draft"><span>Replying to: {replyTo.body.slice(0, 100)}</span><button type="button" onClick={() => setReplyTo(null)}>Cancel</button></div>}<input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
