@@ -54,7 +54,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
       .from("chat_members").select("conversation_id,archived_at").eq("user_id", userId);
     if (membershipError) throw membershipError;
     const visibleMemberships = (memberships ?? []).filter((row: { archived_at: string | null }) => showArchived ? Boolean(row.archived_at) : !row.archived_at);
-    const membershipByConversation = new Map(visibleMemberships.map((row: { conversation_id: string; archived_at: string | null }) => [row.conversation_id, row.archived_at]));
+    const membershipByConversation = new Map<string, string | null>(visibleMemberships.map((row: { conversation_id: string; archived_at: string | null }): [string, string | null] => [row.conversation_id, row.archived_at]));
     const ids = [...new Set(visibleMemberships.map((row: { conversation_id: string }) => row.conversation_id))];
     if (!ids.length) {
       setConversations([]); setActiveId(""); setStatus("No conversations yet. Start one using another test player's Auth UUID."); return;
