@@ -113,6 +113,11 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get("conversation");
+    if (requestedId && conversations.some((conversation) => conversation.id === requestedId)) setActiveId(requestedId);
+  }, [conversations]);
+
   // Reading is recorded server-side against the authenticated membership row.
   useEffect(() => {
     if (!activeId) return;
