@@ -23,6 +23,7 @@ type Conversation = {
   messages: Message[];
   unreadCount: number;
   archivedAt: string | null;
+  hasMore: boolean;
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
 
@@ -32,6 +33,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const [recipientId, setRecipientId] = useState("");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("Loading your server conversations…");
@@ -76,7 +78,8 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         members,
         messages: ((messageResult.data ?? []) as Message[]).reverse(),
         unreadCount: 0,
-        archivedAt: null
+        archivedAt: null,
+        hasMore: (messageResult.data ?? []).length === 50
       };
     })), supabase.rpc("chat_list_unread_counts")]);
     if (unreadResult.error) throw unreadResult.error;
@@ -207,6 +210,33 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     } finally { setBusy(false); }
   }
 
+  async function loadOlderMessages() {
+    if (!active || loadingOlder || !active.hasMore) return;
+    const oldest = active.messages[0];
+    if (!oldest) return;
+    setLoadingOlder(true);
+    setError("");
+    try {
+      const { data, error: pageError } = await createSupabaseBrowserClient()
+        .from("chat_messages")
+        .select("id,conversation_id,sender_id,client_message_id,body,created_at")
+        .eq("conversation_id", active.id)
+        .or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50);
+      if (pageError) throw pageError;
+      const older = ((data ?? []) as Message[]).reverse();
+      setConversations((current) => current.map((item) => item.id === active.id
+        ? { ...item, messages: [...older, ...item.messages], hasMore: older.length === 50 }
+        : item));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load older messages.");
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
   async function archiveActiveConversation() {
     if (!active || busy) return;
     setBusy(true);
@@ -244,7 +274,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <div className="backend-columns">
       <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
