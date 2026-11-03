@@ -35,6 +35,7 @@ type Reaction = { id: string; message_id: string; user_id: string; emoji: string
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [deepLinkApplied, setDeepLinkApplied] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [recipientId, setRecipientId] = useState("");
   const [draft, setDraft] = useState("");
@@ -114,9 +115,14 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   useEffect(() => { void refresh(); }, [refresh]);
 
   useEffect(() => {
+    if (deepLinkApplied) return;
     const requestedId = new URLSearchParams(window.location.search).get("conversation");
-    if (requestedId && conversations.some((conversation) => conversation.id === requestedId)) setActiveId(requestedId);
-  }, [conversations]);
+    if (!requestedId) { setDeepLinkApplied(true); return; }
+    if (conversations.some((conversation) => conversation.id === requestedId)) {
+      setActiveId(requestedId);
+      setDeepLinkApplied(true);
+    }
+  }, [conversations, deepLinkApplied]);
 
   // Reading is recorded server-side against the authenticated membership row.
   useEffect(() => {
