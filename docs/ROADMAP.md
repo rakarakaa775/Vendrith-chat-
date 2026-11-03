@@ -175,3 +175,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added persisted reaction records and same-conversation reply references with authenticated RPC entry points.
 
 - [x] Added a moderator-only/owner/admin audit-history RPC and group Community display for moderation actions.
+
+- [x] Added a separate archived conversation view and per-user restore action; reopening a direct conversation automatically restores it for the initiating player.
