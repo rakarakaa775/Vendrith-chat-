@@ -22,6 +22,7 @@ type Conversation = {
   members: ConversationMember[];
   messages: Message[];
   unreadCount: number;
+  archivedAt: string | null;
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
 
@@ -39,7 +40,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const loadConversations = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
     const { data: memberships, error: membershipError } = await supabase
-      .from("chat_members").select("conversation_id").eq("user_id", userId);
+      .from("chat_members").select("conversation_id,archived_at").eq("user_id", userId).is("archived_at", null);
     if (membershipError) throw membershipError;
     const ids = [...new Set((memberships ?? []).map((row: { conversation_id: string }) => row.conversation_id))];
     if (!ids.length) {
@@ -74,7 +75,8 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         otherUserId: other?.user_id ?? "unknown",
         members,
         messages: ((messageResult.data ?? []) as Message[]).reverse(),
-        unreadCount: 0
+        unreadCount: 0,
+        archivedAt: null
       };
     })), supabase.rpc("chat_list_unread_counts")]);
     if (unreadResult.error) throw unreadResult.error;
@@ -205,6 +207,25 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     } finally { setBusy(false); }
   }
 
+  async function archiveActiveConversation() {
+    if (!active || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { error: archiveError } = await createSupabaseBrowserClient().rpc("chat_set_conversation_archived", {
+        p_conversation_id: active.id,
+        p_archived: true
+      });
+      if (archiveError) throw archiveError;
+      await loadConversations();
+      setStatus("Conversation archived for your account. Other members keep their history.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not archive this conversation.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!activeId || !draft.trim() || busy) return;
@@ -223,7 +244,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <div className="backend-columns">
       <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><p className="backend-id">Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
+        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}</p><button type="button" onClick={() => void archiveActiveConversation()} disabled={busy}>Archive for me</button></div><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
       </section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
