@@ -1,11 +1,31 @@
 import { expect, test } from '@playwright/test';
 
-test('redirects unauthenticated visitors to the non-production sign-in screen', async ({ page }) => {
-  test.skip(process.env.E2E_SUPABASE_AUTH !== '1', 'Requires the explicitly configured non-production Supabase environment.');
+const accountEmail = process.env.E2E_ACCOUNT_1_EMAIL;
+const accountPassword = process.env.E2E_ACCOUNT_1_PASSWORD;
+const supabaseConfigured = process.env.E2E_SUPABASE_AUTH === '1';
+
+test('shows the protected non-production sign-in state to an unauthenticated visitor', async ({ page }) => {
+  test.skip(!supabaseConfigured, 'Requires the explicitly configured non-production Supabase environment.');
   await page.goto('/');
-  await expect(page).toHaveURL(/\/login\?next=/);
+  await expect(page.getByRole('heading', { name: 'Authentication required' })).toBeVisible();
+  await page.getByRole('link', { name: 'Continue to sign in' }).click();
+  await expect(page).toHaveURL(/\\/login$/);
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await expect(page.getByText('NON-PRODUCTION TEST ENVIRONMENT')).toBeVisible();
+});
+
+test('signs in with the configured non-production E2E account and opens server chat', async ({ page }) => {
+  test.skip(!supabaseConfigured || !accountEmail || !accountPassword,
+    'Requires GitHub Actions Non-Production Supabase URL, publishable key, and E2E account credentials.');
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill(accountEmail!);
+  await page.getByLabel('Password').fill(accountPassword!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await expect(page).toHaveURL(/\\/$/, { timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'Vendrith Chat' })).toBeVisible();
+  await expect(page.getByText(accountEmail!, { exact: true })).toBeVisible();
+  await expect(page.getByText(/server-backed conversation\\(s\\) loaded|No conversations yet\\. Start one/i)).toBeVisible({ timeout: 30_000 });
 });
 
 test('provides email and password registration and sign-in modes', async ({ page }) => {
@@ -22,7 +42,7 @@ test('provides email and password registration and sign-in modes', async ({ page
 test('exposes a password recovery request page', async ({ page }) => {
   await page.goto('/login');
   await page.getByRole('link', { name: 'Forgot password?' }).click();
-  await expect(page).toHaveURL(/\/forgot-password$/);
+  await expect(page).toHaveURL(/\\/forgot-password$/);
   await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible();
   await expect(page.getByLabel('Email address')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send reset link' })).toBeVisible();
