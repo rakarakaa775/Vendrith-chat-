@@ -12,6 +12,8 @@ type Message = {
   body: string;
   created_at: string;
   reply_to_message_id?: string | null;
+  edited_at?: string | null;
+  is_deleted?: boolean;
 };
 type ConversationMember = { user_id: string; role: string; username: string; display_name: string };
 type Conversation = {
@@ -67,7 +69,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
       const [conversationResult, memberResult, messageResult] = await Promise.all([
         supabase.from("chat_conversations").select("id,kind,title,created_at,closed_at").eq("id", id).single(),
         supabase.from("chat_members").select("user_id,role").eq("conversation_id", id),
-        supabase.from("chat_messages").select("id,conversation_id,sender_id,client_message_id,body,created_at,reply_to_message_id").eq("conversation_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(50)
+        supabase.from("chat_messages").select("id,conversation_id,sender_id,client_message_id,body,created_at,reply_to_message_id,edited_at,is_deleted").eq("conversation_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(50)
       ]);
       if (conversationResult.error) throw conversationResult.error;
       if (memberResult.error) throw memberResult.error;
@@ -229,6 +231,29 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     } finally { setBusy(false); }
   }
 
+  async function editMessage(message: Message) {
+    const nextBody = window.prompt("Edit your message (up to 4000 characters):", message.body);
+    if (nextBody === null || !nextBody.trim()) return;
+    setBusy(true); setError("");
+    try {
+      const { error: rpcError } = await createSupabaseBrowserClient().rpc("chat_edit_message", { p_message_id: message.id, p_body: nextBody });
+      if (rpcError) throw rpcError;
+      await loadConversations();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not edit message."); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteMessage(message: Message) {
+    if (!window.confirm("Delete this message? It will be replaced with a deletion notice.")) return;
+    setBusy(true); setError("");
+    try {
+      const { error: rpcError } = await createSupabaseBrowserClient().rpc("chat_delete_message", { p_message_id: message.id });
+      if (rpcError) throw rpcError;
+      await loadConversations();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not delete message."); }
+    finally { setBusy(false); }
+  }
+
   async function loadOlderMessages() {
     if (!active || loadingOlder || !active.hasMore) return;
     const oldest = active.messages[0];
@@ -297,8 +322,8 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
           const messageReactions = reactions.filter((reaction) => reaction.message_id === message.id);
           return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
             {message.reply_to_message_id && <blockquote className="message-reply-context">{active.messages.find((item) => item.id === message.reply_to_message_id)?.body ?? "Original message"}</blockquote>}<p>{message.body}</p>
-            <small>{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small>
-            <button type="button" className="message-reply-button" onClick={() => setReplyTo(message)}>Reply</button><div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
+            <small>{message.edited_at ? "Edited · " : ""}{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small>
+            <div className="message-action-row">{!message.is_deleted && <button type="button" className="message-reply-button" onClick={() => setReplyTo(message)}>Reply</button>}{message.sender_id === userId && !message.is_deleted && Date.now() - new Date(message.created_at).getTime() <= 15 * 60 * 1000 && <><button type="button" className="message-reply-button" onClick={() => void editMessage(message)} disabled={busy}>Edit</button><button type="button" className="message-reply-button" onClick={() => void deleteMessage(message)} disabled={busy}>Delete</button></>}</div><div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
               const matching = messageReactions.filter((reaction) => reaction.emoji === emoji);
               const selected = matching.some((reaction) => reaction.user_id === userId);
               return <button type="button" key={emoji} className={selected ? "selected" : ""} aria-label={`React with ${emoji}`} onClick={() => void toggleReaction(message.id, emoji)}>{emoji}{matching.length > 0 && <span>{matching.length}</span>}</button>;
