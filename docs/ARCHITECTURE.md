@@ -64,6 +64,8 @@ The isolated Non-Production database contains Chat-owned tables for:
 - `chat_group_reports` and `chat_group_moderation_events`: report workflow and append-only moderation trail.
 - `chat_notifications` and `chat_notification_preferences`: private event inbox, read state, and category preferences.
 - `chat_message_reactions`: member-scoped message reactions.
+- `chat_notifications`: private notifications, preferences, and read state.
+- `chat_members.last_read_at` / `archived_at`: per-member read and archive state.
 - `chat_private.rate_limit_events`: private rate-limit ledger.
 
 All exposed Chat tables have RLS enabled. Direct-message writes and social/group mutations use narrowly scoped RPC entry points; application UI is not an authorization boundary. Database policies and RPCs remain the authoritative permission layer.
@@ -72,7 +74,7 @@ All exposed Chat tables have RLS enabled. Direct-message writes and social/group
 
 ## 6. Application routes and behavior
 
-- `/`: authenticated server-backed chat, direct/group history with cursor pagination, unread/read state, per-member archive, replies, reactions, message composer, and realtime conversation previews.
+- `/`: authenticated server-backed chat, direct/group history with cursor pagination, unread/read state, per-member archive, replies, reactions, 15-minute author edit/soft-delete, message composer, and realtime conversation previews.
 - `/notifications`: private notification inbox, read/unread controls, per-category preferences, and realtime inserts.
 - `/login`: email/password authentication.
 - `/auth/callback`: PKCE callback.
@@ -85,13 +87,13 @@ Local preview data must never be represented as shared or server-persisted.
 ## 7. Messaging and realtime
 
 - Sender identity is derived from verified Auth claims.
-- Message body is trimmed, non-empty, and limited to 4,000 characters.
+- Message body is trimmed, non-empty, and limited to 4,000 characters. Authors may edit or soft-delete their own messages within a server-enforced 15-minute window.
 - Each logical send uses one client idempotency UUID, reused on retry.
 - A successful database commit is the point at which the message is considered persisted.
 - Message history is bounded and ordered deterministically by timestamp and ID.
 - Realtime is an optimization, not the source of truth. Conversation inserts update previews and unread badges; notification inserts refresh the private inbox. Persisted history remains authoritative.
 - Realtime message delivery must remain subject to the same member-scoped SELECT authorization.
-- Group conversations use the same persisted message stream, with group-specific member roles.
+- Group conversations use the same persisted message stream, with group-specific member roles, owner-controlled closure, and read-only history after closure. Direct conversations can be archived per member and restored when reopened.
 
 ## 8. Social and community behavior
 
