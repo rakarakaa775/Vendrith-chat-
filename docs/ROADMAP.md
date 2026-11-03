@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-03
 **Current phase:** Phase 6 — Social & Community
-**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on feat/chat-engine-server-ui. The owner has manually verified current profile labels and history preservation. Friend-only expiring Presence and privacy controls are implemented in Non-Production; two-account browser acceptance, full social-flow E2E, groups, and moderation remain open.
+**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 social graph, authenticated Friends & Community UI, friend-only expiring Presence, and group-conversation backend/UI are implemented on feat/chat-engine-server-ui and the Non-Production E2E project. The owner has manually verified profile-label synchronization, history preservation, Block/Unblock, and blocked-user Presence privacy. Group browser acceptance, automated authenticated social E2E, and reporting/moderation remain open.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -93,7 +93,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 6 — Social & Community
 
-**Status: P0 social graph, profile display, and friend-only Presence implemented; browser acceptance pending**
+**Status: Social graph, friend-only Presence, and group conversations implemented; browser acceptance and moderation remain pending**
 
 - [x] Opt-in player profiles and limited-field player search.
 - [x] Friend requests, accept/decline/cancel/remove, and block/unblock.
@@ -102,12 +102,13 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Resolve current display names and @usernames in existing conversation lists and thread headers through a membership-scoped RPC; refresh labels when the chat regains focus.
 - [ ] Complete live browser acceptance with two real Non-Production accounts and automated authenticated social-flow E2E.
 - [x] Implement friend-only Presence with 90-second expiry, privacy controls, and membership/block authorization; browser acceptance remains pending.
-- [ ] Group conversations, membership lifecycle, and admin/moderator role permissions.
+- [x] Implement group conversations, membership lifecycle, and owner/admin/moderator/member authorization in Non-Production.
+- [ ] Complete live browser acceptance for group creation, messaging, member add/remove/leave, role changes, and history isolation.
 - [ ] Reporting and moderation workflows.
 
-**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md), [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md), and [Friend Presence Implementation — 2026-11-03](audits/FRIEND-PRESENCE-IMPLEMENTATION-2026-11-03.md).
+**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md), [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md), [Friend Presence Implementation — 2026-11-03](audits/FRIEND-PRESENCE-IMPLEMENTATION-2026-11-03.md), and [Group Conversations Implementation — 2026-11-03](audits/PHASE-6-GROUP-CONVERSATIONS-IMPLEMENTATION-2026-11-03.md).
 
-**Exit criteria:** relationship transitions and privacy tests pass in both transactional database verification and authenticated browser flows; group authorization tests pass before Phase 6 is closed.
+**Exit criteria:** relationship transitions and privacy tests pass in transactional database verification and authenticated browser flows; group authorization tests pass in both transactional and authenticated browser flows; reporting/moderation workflows are delivered before Phase 6 is closed.
 
 ## Phase 7 — Media & Advanced Features
 
