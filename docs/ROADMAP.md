@@ -149,3 +149,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Chat client now records a read receipt when a conversation becomes active and displays server-calculated unread counts in the conversation list.
 - [ ] Conversation pagination, archive/close lifecycle, notification persistence, and realtime conversation-list updates remain implementation work.
 - [ ] No tests or QA were run as requested; this is implementation progress, not a verification claim.
+
+- [x] Added per-member archive state so archiving hides a conversation only for the current player; other members retain their conversation and history.
