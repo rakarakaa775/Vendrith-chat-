@@ -92,9 +92,9 @@
 - [x] Friend list, remove friend, and relationship state synchronization.
 - [x] Block/unblock controls integrated with server-side relationship rules for discovery, requests, and new direct-message initiation.
 - [x] Discoverability and presence privacy controls (online / last seen). Friend-request permissions remain open.
-- [ ] Group creation, invitations, join/leave, and member removal.
-- [ ] Group roles: owner, admin, moderator, and member, enforced server-side.
-- [ ] Admin/moderator management and safe ownership transfer.
+- [x] Group creation with friend selection, leave, add member, and member removal controls; invitations and join flow remain open.
+- [x] Group role management controls for owner/admin/moderator/member, backed by server-side RPC permissions.
+- [ ] Admin/moderator management polish and safe ownership transfer.
 - [ ] Group rename, description, avatar metadata, close/archive, and deletion policy.
 - [ ] Community moderation actions and audit trail for privileged actions.
 
