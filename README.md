@@ -4,29 +4,30 @@ Vendrith Chat is the standalone communication service for the World of Vendrith 
 
 ## Current status
 
-**Stage:** Phase 2 — Chat Engine. The local-only chat vertical slice is implemented and covered by unit and Playwright browser tests. The app does not yet authenticate players or deliver/synchronize messages through a server.
+**Stage:** Implementation-first roadmap. Email/password authentication, server-backed direct messaging, realtime message delivery, social graph RPCs, profile/privacy controls, and group management interfaces are implemented in the isolated Non-Production environment. All test execution and QA are intentionally deferred until the roadmap implementation phases are complete.
 **Repository:** `rakarakaa775/Vendrith-chat-`
 **Default branch:** `main`
 **Primary application language:** English
 
-The local preview supports composing messages, saving them in the current browser's local storage, switching conversations, and recovering from transient local-storage write failures. An email/password Auth foundation and a separate non-production backend test console are now available for the isolated Vendrith Non-Production E2E project only. The console exercises server-backed direct-conversation creation and message RPCs. The main chat interface is still local-preview mode until authenticated two-player tests pass and the remote adapter is integrated.
+The app provides a local preview when backend configuration is absent and an authenticated server-backed chat experience when configured for Vendrith Non-Production E2E. The main chat includes direct conversations and group conversations, with a separate Community route for player discovery, friend requests, blocks, presence privacy, profile management, and group member roles. These implementation statements do not mean the deferred final QA/release gates have passed.
 
 ## Product direction
 
-The first MVP targets:
+The MVP targets:
 - Email/password sign-in and registration using the canonical Supabase Auth identity.
-- Protected responsive chat shell.
-- Conversation list and direct-message view.
+- Protected responsive chat shell with direct and group conversations.
 - Secure membership-scoped message history and sending.
-- Automated authorization and messaging tests.
+- Player discovery, friendships, blocks, presence privacy, and group role management.
+- Private media and in-app notifications in later implementation phases.
+- Final automated authorization, messaging, and release tests after all implementation work is complete.
 
-Friends, groups, media, push notifications, calls, AI chat, and game-world actions are later or separately approved scope.
+Voice/video, AI chat, public global channels, and game-world mutation remain out of scope unless separately approved.
 
 ## Architecture and safety
 
-- Next.js App Router, TypeScript, React, and a local-only chat domain adapter for the current vertical slice.
+- Next.js App Router, TypeScript, React, local preview adapter, and authenticated Supabase-backed chat/social RPCs.
 - npm lockfile with reproducible `npm ci`; CI checks dependency audit, typecheck, unit tests, Playwright browser tests, and production build.
-- Supabase Auth is the intended identity authority; verified `user.id` / JWT `sub` is the stable player identity.
+- Supabase Auth is the identity authority; verified `user.id` / JWT `sub` is the stable player identity.
 - Chat owns chat-domain data only. It must not mutate World of Vendrith game data.
 - Production integration, Auth configuration changes, SQL/RLS/migrations, and production data writes require separate explicit approval.
 - Use isolated non-production test identities. Never silently fall back to production.
