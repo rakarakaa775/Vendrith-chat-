@@ -105,8 +105,8 @@
 - [ ] Private image/file upload and download.
 - [ ] MIME allow-list, byte-size limits, generated storage paths, quotas, and abuse controls.
 - [ ] Attachment access restricted to active conversation members.
-- [ ] In-app notifications and per-category preferences.
-- [ ] Notification read/unread state and deep links.
+- [x] Private in-app notification persistence, inbox, read/unread state, and per-category preferences for messages/friends/groups/moderation; event triggers currently cover incoming messages and friend requests.
+- [x] Notification read/unread state and inbox controls; [ ] event-specific deep links and realtime inbox refresh.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
 - [ ] Message reactions, reply context, edit/delete policy, and pinned messages.
 - [ ] Accessibility and localization foundations.
@@ -151,3 +151,7 @@ Only after Phases 1–8 implementation work is complete:
 - [ ] No tests or QA were run as requested; this is implementation progress, not a verification claim.
 
 - [x] Added per-member archive state so archiving hides a conversation only for the current player; other members retain their conversation and history.
+
+- [x] Added authenticated `/notifications` inbox, mark-read/mark-all-read actions, and per-category preference controls.
+- [x] Database triggers create private inbox notifications for incoming messages and new friend requests; archived conversations suppress new-message notifications for that member.
+- [ ] Add group membership/moderation event triggers and realtime inbox updates; external push remains deferred pending provider/privacy/cost approval.
