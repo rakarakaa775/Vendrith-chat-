@@ -26,6 +26,7 @@ type Presence = { friend_user_id: string; is_online: boolean; last_seen_at: stri
 type GroupMember = { user_id: string; role: "owner" | "admin" | "moderator" | "member"; username: string; display_name: string };
 type GroupConversation = { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string; members: GroupMember[] };
 type GroupReport = { report_id: string; target_user_id: string | null; message_id: string | null; category: string; details: string; created_at: string };
+type ModerationEvent = { id: string; actor_id: string; report_id: string | null; target_user_id: string | null; action: string; note: string; created_at: string };
 type Tab = "discover" | "friends" | "requests" | "blocked" | "groups" | "profile";
 
 const tabs: { id: Tab; label: string }[] = [
@@ -55,6 +56,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
   const [groupTitle, setGroupTitle] = useState("");
   const [groupMemberId, setGroupMemberId] = useState("");
   const [reportsByGroup, setReportsByGroup] = useState<Record<string, GroupReport[]>>({});
+  const [auditByGroup, setAuditByGroup] = useState<Record<string, ModerationEvent[]>>({});
   const [reviewGroupId, setReviewGroupId] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -225,6 +227,18 @@ export default function CommunityClient({ userId }: { userId: string }) {
     } finally {
       setBusy("");
     }
+  }
+
+  async function loadModerationHistory(groupId: string) {
+    setBusy(`audit:${groupId}`);
+    setError("");
+    try {
+      const { data, error: rpcError } = await supabase.rpc("chat_list_group_moderation_events", { p_conversation_id: groupId });
+      if (rpcError) throw rpcError;
+      setAuditByGroup((current) => ({ ...current, [groupId]: (data ?? []) as ModerationEvent[] }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not load moderation history.");
+    } finally { setBusy(""); }
   }
 
   async function resolveGroupReport(groupId: string, reportId: string, decision: "dismiss" | "remove_member") {
@@ -435,8 +449,8 @@ export default function CommunityClient({ userId }: { userId: string }) {
                     <button type="button" onClick={() => void addGroupMember(group.id)} disabled={Boolean(busy) || !groupMemberId}>Add member</button>
                   </div>}
                   {canModerate && <div className="community-group-review">
-                    <button className="community-subtle-button" type="button" onClick={() => void loadGroupReports(group.id)} disabled={Boolean(busy)}>Review reports</button>
-                    {reviewGroupId === group.id && <div className="community-report-list">
+                    <button className="community-subtle-button" type="button" onClick={() => void loadGroupReports(group.id)} disabled={Boolean(busy)}>Review reports</button><button className="community-subtle-button" type="button" onClick={() => void loadModerationHistory(group.id)} disabled={Boolean(busy)}>Audit history</button>
+                    {(auditByGroup[group.id] ?? []).length > 0 && <div className="community-report-list"><h3>Moderation history</h3>{auditByGroup[group.id].map((event) => <div className="community-report" key={event.id}><strong>{event.action}</strong><p>{event.note || "No note recorded."}</p><small>{event.actor_id.slice(0, 8)} → {event.target_user_id?.slice(0, 8) ?? "group"} · {new Date(event.created_at).toLocaleString()}</small></div>)}</div>}{reviewGroupId === group.id && <div className="community-report-list">
                       {(reportsByGroup[group.id] ?? []).map((report) => <div className="community-report" key={report.report_id}>
                         <strong>{report.category}</strong><p>{report.details || "No additional details."}</p><small>{report.target_user_id ? `Reported player: ${report.target_user_id.slice(0, 8)}` : "Message report"} · {new Date(report.created_at).toLocaleString()}</small>
                         <div className="community-person-actions">
