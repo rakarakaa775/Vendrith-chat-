@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-03
 **Current phase:** Phase 6 — Social & Community
-**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on `feat/chat-engine-server-ui`; conversation profile labels are now wired to current usernames/display names. Two-account browser acceptance remains pending.
+**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on `feat/chat-engine-server-ui`. The owner has manually verified that current profile labels display correctly and existing conversation history remains intact. Full social-flow browser acceptance, authenticated social E2E, presence, groups, and moderation remain open.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 

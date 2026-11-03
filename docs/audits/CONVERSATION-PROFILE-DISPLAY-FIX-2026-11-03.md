@@ -36,9 +36,12 @@ The server-backed chat UI loaded conversation membership UUIDs and rendered a la
 - npm run build: PASS; existing non-fatal webpack cache serialization warnings.
 - git diff --check: PASS.
 
-## Remaining acceptance
+## Browser acceptance — owner confirmed
 
-The owner should reopen the deployed preview after the next deployment, verify both accounts' display names and @usernames in the conversation list and thread, then edit one profile from the second account and return to the first account's chat to verify the label refreshes. This browser acceptance has not yet been claimed.
+- The owner opened the updated Preview and confirmed the profile-name changes are visible in the conversation UI.
+- The owner confirmed existing conversations and message history remain intact after the update.
+- Result: **PASS for profile display and history preservation**.
+- This does not close all Phase 6 acceptance: the full friend-request/block browser flow and automated authenticated two-account social E2E remain separate open gates.
 
 ## Safety
 
