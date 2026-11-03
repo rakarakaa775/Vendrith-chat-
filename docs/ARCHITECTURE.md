@@ -75,7 +75,8 @@ All exposed Chat tables have RLS enabled. Direct-message writes and social/group
 ## 6. Application routes and behavior
 
 - `/`: authenticated server-backed chat, direct/group history with cursor pagination, unread/read state, per-member archive, replies, reactions, 15-minute author edit/soft-delete, message composer, and realtime conversation previews.
-- `/notifications`: private notification inbox, read/unread controls, per-category preferences, and realtime inserts.
+- `/notifications`: private notification inbox, read/unread controls, per-category preferences, realtime inserts, and deep links.
+- `/settings/account`: password update, current-session expiry display, and sign-out-other-sessions.
 - `/login`: email/password authentication.
 - `/auth/callback`: PKCE callback.
 - `/forgot-password` and `/reset-password`: password recovery.
