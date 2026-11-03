@@ -140,3 +140,6 @@
 .backend-conversations-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .backend-conversations-heading h2 { margin: 0; }
 .backend-conversations-heading button { padding: .35rem .55rem; border: 1px solid var(--border, #30303a); border-radius: .5rem; background: transparent; color: inherit; font-size: .78rem; }
+
+.message-action-row { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.message-action-row button { margin-top: .4rem; }
