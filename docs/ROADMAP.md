@@ -185,3 +185,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Hardened moderation notifications so the reporter’s identity is not exposed to group moderators through notification actor metadata.
 
 - [x] Added `/settings/account` with password update, current session expiry display, and sign-out-other-sessions action.
+
+- [x] Restored the original 30/minute and 500/hour message-send rate limits after adding group-close enforcement; idempotent retries return the original message without consuming another send quota.
