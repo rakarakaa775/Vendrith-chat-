@@ -155,3 +155,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added authenticated `/notifications` inbox, mark-read/mark-all-read actions, and per-category preference controls.
 - [x] Database triggers create private inbox notifications for incoming messages and new friend requests; archived conversations suppress new-message notifications for that member.
 - [ ] Add group membership/moderation event triggers and realtime inbox updates; external push remains deferred pending provider/privacy/cost approval.
+
+- [x] Added cursor-based loading of older messages in 50-message pages while retaining the latest-message window.
