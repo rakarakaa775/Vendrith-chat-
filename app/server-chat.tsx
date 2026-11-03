@@ -34,6 +34,22 @@ type ConversationProfileRow = {
   display_name: string;
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
+type GroupReport = {
+  report_id: string;
+  target_user_id: string | null;
+  message_id: string | null;
+  category: string;
+  details: string;
+  created_at: string;
+};
+type MyGroupReport = {
+  report_id: string;
+  category: string;
+  status: "open" | "resolved" | "dismissed";
+  created_at: string;
+  resolution_note: string | null;
+};
+type ReportTarget = { messageId?: string; userId?: string; label: string };
 
 function playerLabel(profile: PlayerProfile) {
   return profile.username ? `@${profile.username}` : (profile.display_name || "Vendrith Player");
@@ -51,6 +67,11 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const [groupTitle, setGroupTitle] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [groupAddMemberId, setGroupAddMemberId] = useState("");
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [reportCategory, setReportCategory] = useState("harassment");
+  const [reportDetails, setReportDetails] = useState("");
+  const [groupReports, setGroupReports] = useState<GroupReport[]>([]);
+  const [myReports, setMyReports] = useState<MyGroupReport[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -217,6 +238,31 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     finally { setBusy(false); }
   }
 
+  async function submitGroupReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || !active || active.kind !== "group" || !reportTarget) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { error: rpcError } = await createSupabaseBrowserClient().rpc("chat_submit_group_report", {
+        p_conversation_id: active.id,
+        p_reported_user_id: reportTarget.userId ?? null,
+        p_message_id: reportTarget.messageId ?? null,
+        p_category: reportCategory,
+        p_details: reportDetails.trim()
+      });
+      if (rpcError) throw rpcError;
+      setReportTarget(null);
+      setReportDetails("");
+      await loadConversations();
+      setStatus("Your report was submitted privately to this group's moderators.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not submit the group report.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function runGroupAction(action: () => Promise<{ error: { message: string } | null }>, success: string) {
     if (busy) return;
     setBusy(true);
@@ -261,6 +307,33 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const currentMember = active?.members.find((member) => member.user_id === userId);
   const activeLabel = active?.kind === "group" ? (active.title || "Group conversation") : active ? playerLabel(active.otherProfile) : "Select a conversation";
   const availableGroupFriends = friends.filter((friend) => !active?.members.some((member) => member.user_id === friend.friend_user_id));
+
+  useEffect(() => {
+    if (!active || active.kind !== "group") {
+      setGroupReports([]);
+      setMyReports([]);
+      setReportTarget(null);
+      return;
+    }
+    let current = true;
+    const client = createSupabaseBrowserClient();
+    const canModerate = ["owner", "admin", "moderator"].includes(currentMember?.role ?? "");
+    void Promise.all([
+      client.rpc("chat_get_my_group_reports", { p_conversation_id: active.id }),
+      canModerate
+        ? client.rpc("chat_list_group_reports", { p_conversation_id: active.id })
+        : Promise.resolve({ data: [], error: null })
+    ]).then(([mine, queue]) => {
+      if (!current) return;
+      if (mine.error) throw mine.error;
+      if (queue.error) throw queue.error;
+      setMyReports((mine.data ?? []) as MyGroupReport[]);
+      setGroupReports((queue.data ?? []) as GroupReport[]);
+    }).catch((cause) => {
+      if (current) setError(cause instanceof Error ? cause.message : "Could not load group reports.");
+    });
+    return () => { current = false; };
+  }, [activeId, active?.kind, currentMember?.role, conversations]);
 
   return <main className="backend-test-page">
     <header className="backend-test-header">
@@ -313,6 +386,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
             <div className="backend-member-list">
               {active.members.map((member) => <div key={member.user_id} className="backend-member">
                 <span><strong>{member.display_name}</strong><small>@{member.username ?? "player"} · {member.role}</small></span>
+                {member.user_id !== userId && <button type="button" disabled={busy} onClick={() => { setReportTarget({ userId: member.user_id, label: member.display_name }); setReportCategory("harassment"); setReportDetails(""); }}>Report</button>}
                 {currentMember?.role === "owner" && member.user_id !== userId && <div className="backend-member-actions">
                   <button type="button" disabled={busy} onClick={() => void runGroupAction(() => createSupabaseBrowserClient().rpc("chat_set_group_member_role", { p_conversation_id: active.id, p_member_id: member.user_id, p_role: "admin" }), "Member promoted to admin.")}>Admin</button>
                   <button type="button" disabled={busy} onClick={() => void runGroupAction(() => createSupabaseBrowserClient().rpc("chat_set_group_member_role", { p_conversation_id: active.id, p_member_id: member.user_id, p_role: "moderator" }), "Member assigned as moderator.")}>Mod</button>
@@ -330,6 +404,32 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
               <button disabled={busy || !groupAddMemberId}>Add member</button>
             </form>}
             {currentMember?.role !== "owner" && <button className="backend-leave" type="button" disabled={busy} onClick={() => void runGroupAction(() => createSupabaseBrowserClient().rpc("chat_leave_group", { p_conversation_id: active.id }), "You left the group.")}>Leave group</button>}
+            {["owner", "admin", "moderator"].includes(currentMember?.role ?? "") && <section className="backend-report-queue">
+              <div className="backend-group-heading"><strong>Open reports</strong><span>{groupReports.length}</span></div>
+              {!groupReports.length && <small>No open reports.</small>}
+              {groupReports.map((report) => {
+                const target = active.members.find((member) => member.user_id === report.target_user_id);
+                return <article className="backend-report-item" key={report.report_id}>
+                  <strong>{report.category.replaceAll("_", " ")}</strong>
+                  <small>{target ? "Reported member: " + playerLabel(target) : "Reported member/message"} · {new Date(report.created_at).toLocaleString()}</small>
+                  {report.message_id && <small>Message reference: {report.message_id.slice(0, 8)}</small>}
+                  {report.details && <p>{report.details}</p>}
+                  <div className="backend-member-actions">
+                    <button type="button" disabled={busy} onClick={() => void runGroupAction(() => createSupabaseBrowserClient().rpc("chat_resolve_group_report", { p_report_id: report.report_id, p_decision: "dismiss", p_note: "" }), "Report dismissed.")}>Dismiss</button>
+                    {report.target_user_id && <button className="danger" type="button" disabled={busy} onClick={() => void runGroupAction(() => createSupabaseBrowserClient().rpc("chat_resolve_group_report", { p_report_id: report.report_id, p_decision: "remove_member", p_note: "Removed after group report review." }), "Report resolved and member removed.")}>Remove member</button>}
+                  </div>
+                </article>;
+              })}
+              <small>Reporter identities are hidden from this queue. Removal permissions are enforced by the database role hierarchy.</small>
+            </section>}
+            {myReports.length > 0 && <section className="backend-report-queue">
+              <div className="backend-group-heading"><strong>Your reports</strong><span>{myReports.length}</span></div>
+              {myReports.map((report) => <div className="backend-report-item" key={report.report_id}>
+                <strong>{report.category.replaceAll("_", " ")}</strong>
+                <small>Status: {report.status} · {new Date(report.created_at).toLocaleString()}</small>
+                {report.resolution_note && <p>{report.resolution_note}</p>}
+              </div>)}
+            </section>}
           </section>}
           <div className="backend-messages">
             {active.messages.map((message) => {
@@ -337,9 +437,28 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
               const senderLabel = message.sender_id === userId ? "You" : sender ? playerLabel(sender) : "Group member";
               return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
                 <p>{message.body}</p><small>{senderLabel} · {new Date(message.created_at).toLocaleString()}</small>
+                {active.kind === "group" && message.sender_id !== userId && <button className="backend-report-button" type="button" disabled={busy} onClick={() => { setReportTarget({ messageId: message.id, label: "message" }); setReportCategory("harassment"); setReportDetails(""); }}>Report message</button>}
               </article>;
             })}
           </div>
+          {active.kind === "group" && reportTarget && <form className="backend-report-form" onSubmit={submitGroupReport}>
+            <strong>Report {reportTarget.label}</strong>
+            <select aria-label="Report category" value={reportCategory} onChange={(event) => setReportCategory(event.target.value)}>
+              <option value="spam">Spam</option>
+              <option value="harassment">Harassment or bullying</option>
+              <option value="hate">Hateful content</option>
+              <option value="threats">Threats or violence</option>
+              <option value="sexual_content">Sexual content</option>
+              <option value="scam">Scam or fraud</option>
+              <option value="impersonation">Impersonation</option>
+              <option value="other">Other</option>
+            </select>
+            <textarea aria-label="Report details (optional)" maxLength={1000} placeholder="Add details (optional, max 1000 characters)" value={reportDetails} onChange={(event) => setReportDetails(event.target.value)} />
+            <div className="backend-member-actions">
+              <button type="submit" disabled={busy}>Submit report</button>
+              <button type="button" disabled={busy} onClick={() => setReportTarget(null)}>Cancel</button>
+            </div>
+          </form>}
           <form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>
           {failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}
         </>}

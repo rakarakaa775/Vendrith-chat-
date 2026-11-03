@@ -93,7 +93,7 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 
 ## Phase 6 — Social & Community
 
-**Status: Social graph, friend-only Presence, and group conversations implemented; browser acceptance and moderation remain pending**
+**Status: Social graph, friend-only Presence, group conversations, and reporting/moderation implemented; browser acceptance remains pending**
 
 - [x] Opt-in player profiles and limited-field player search.
 - [x] Friend requests, accept/decline/cancel/remove, and block/unblock.
@@ -104,9 +104,9 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Implement friend-only Presence with 90-second expiry, privacy controls, and membership/block authorization; browser acceptance remains pending.
 - [x] Implement group conversations, membership lifecycle, and owner/admin/moderator/member authorization in Non-Production.
 - [ ] Complete live browser acceptance for group creation, messaging, member add/remove/leave, role changes, and history isolation.
-- [ ] Reporting and moderation workflows.
+- [x] Implement group reporting, private reporter status, role-scoped moderation queue, report dismissal/member removal, and moderation audit events in Non-Production. Live browser acceptance remains pending.
 
-**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md), [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md), [Friend Presence Implementation — 2026-11-03](audits/FRIEND-PRESENCE-IMPLEMENTATION-2026-11-03.md), and [Group Conversations Implementation — 2026-11-03](audits/PHASE-6-GROUP-CONVERSATIONS-IMPLEMENTATION-2026-11-03.md).
+**Current evidence:** see [Phase 6 Group Reporting & Moderation — 2026-11-03](audits/PHASE-6-GROUP-REPORTING-MODERATION-2026-11-03.md), [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md), [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md), [Friend Presence Implementation — 2026-11-03](audits/FRIEND-PRESENCE-IMPLEMENTATION-2026-11-03.md), and [Group Conversations Implementation — 2026-11-03](audits/PHASE-6-GROUP-CONVERSATIONS-IMPLEMENTATION-2026-11-03.md).
 
 **Exit criteria:** relationship transitions and privacy tests pass in transactional database verification and authenticated browser flows; group authorization tests pass in both transactional and authenticated browser flows; reporting/moderation workflows are delivered before Phase 6 is closed.
 
