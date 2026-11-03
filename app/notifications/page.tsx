@@ -10,5 +10,5 @@ export default async function NotificationsPage() {
   if (!supabase) return <main className="auth-status"><h1>Authentication unavailable</h1><p>Non-Production authentication is not configured.</p></main>;
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims?.sub) return <main className="auth-status"><h1>Authentication required</h1><p>Sign in to view your notifications.</p><a href="/login">Continue to sign in</a></main>;
-  return <NotificationsClient />;
+  return <NotificationsClient userId={data.claims.sub} />;
 }
