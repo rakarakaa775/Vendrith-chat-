@@ -48,13 +48,24 @@ Both migration versions are recorded in the Non-Production project's migration h
 - Privilege verification: `anon` cannot read the report table or execute report submission; `authenticated` cannot read the report table directly but can execute the authenticated report RPC.
 - Supabase Security Advisor: no new function-search-path or execute-grant findings for the reporting RPCs. The two new tables produce the informational `RLS enabled, no policy` notice by design because direct table access is revoked and all reads/writes use the RPC boundary. Existing project-wide advisor findings remain outside this task's scope.
 
+## Live browser acceptance — owner-confirmed
+
+On 2026-11-03, the owner confirmed that the Preview browser workflows worked:
+- Report a group message and report a group member.
+- Open and review the moderator/admin report queue.
+- Dismiss a report.
+- Remove a reported member and verify that the removed member loses group access.
+- Review the reporter's report status.
+
+This is recorded as owner-confirmed manual acceptance. No independent browser automation trace or screenshot was captured in this audit.
+
 ## Remaining acceptance gates
 
-- Live browser verification with two real Non-Production accounts for report-message, report-member, moderator queue visibility, dismiss, remove-member, and reporter status refresh.
-- Verify the reporting panel on mobile and desktop browser layouts.
+- Verify the reporting panel on both mobile and desktop layouts (unless covered by the owner's test session).
 - Re-run authenticated E2E when explicit Non-Production auth test configuration is available.
+- Complete the separate Phase 6 social-flow, Presence, and remaining group lifecycle acceptance gates listed in the main roadmap.
 
-**Decision:** PARTIALLY VERIFIED. The reporting and moderation implementation and database authorization checks are delivered, but Phase 6 remains IN PROGRESS until live browser acceptance and the other Phase 6 acceptance gates are complete.
+**Decision:** REPORTING/MODERATION ACCEPTED MANUALLY; PHASE 6 REMAINS IN PROGRESS. The owner confirmed that the browser workflows work, while independent automated authenticated E2E and the other Phase 6 exit criteria remain open.
 
 ## Release safety
 
