@@ -162,8 +162,9 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         if (incoming.conversation_id !== conversationId) return;
         setConversations((current) => current.map((conversation) => {
           if (conversation.id !== conversationId) return conversation;
+          const alreadyPresent = conversation.messages.some((message) => message.id === incoming.id);
           const messages = mergeRealtimeMessage(conversation.messages, incoming, 50);
-          const isUnread = incoming.sender_id !== userId && conversationId !== activeId;
+          const isUnread = !alreadyPresent && incoming.sender_id !== userId && conversationId !== activeId;
           return { ...conversation, messages, unreadCount: isUnread ? conversation.unreadCount + 1 : conversation.unreadCount };
         }).sort((a, b) =>
           (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(a.messages.at(-1)?.created_at ?? a.created_at)
