@@ -63,7 +63,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
       const [conversationResult, memberResult, messageResult] = await Promise.all([
         supabase.from("chat_conversations").select("id,kind,title,created_at").eq("id", id).single(),
         supabase.from("chat_members").select("user_id,role").eq("conversation_id", id),
-        supabase.from("chat_messages").select("id,conversation_id,sender_id,client_message_id,body,created_at").eq("conversation_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(50)
+        supabase.from("chat_messages").select("id,conversation_id,sender_id,client_message_id,body,created_at,reply_to_message_id").eq("conversation_id", id).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(50)
       ]);
       if (conversationResult.error) throw conversationResult.error;
       if (memberResult.error) throw memberResult.error;
