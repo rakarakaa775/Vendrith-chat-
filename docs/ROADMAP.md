@@ -95,7 +95,7 @@
 - [x] Discoverability and presence privacy controls (online / last seen). Friend-request permissions remain open.
 - [x] Group creation with friend selection, leave, add member, and member removal controls; invitations and join flow remain open.
 - [x] Group role management controls for owner/admin/moderator/member, backed by server-side RPC permissions.
-- [x] Admin/moderator management controls and owner-initiated ownership transfer; [ ] deeper audit-history presentation.
+- [x] Admin/moderator management controls and owner-initiated ownership transfer; [x] role-restricted audit-history presentation.
 - [x] Group rename and description metadata; [ ] avatar upload, close/archive, and deletion policy.
 - [x] Backend group report workflow and append-only moderation event table.
 - [x] Community moderation report submission, report review, dismiss, and member-removal controls; audit-history presentation remains open.
@@ -173,3 +173,5 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added owner-only group closure; closed groups retain member read access and reject new message writes at the server RPC boundary.
 
 - [x] Added persisted reaction records and same-conversation reply references with authenticated RPC entry points.
+
+- [x] Added a moderator-only/owner/admin audit-history RPC and group Community display for moderation actions.
