@@ -12,13 +12,29 @@ type Message = {
   body: string;
   created_at: string;
 };
+type PlayerProfile = { username: string | null; display_name: string };
 type Conversation = {
   id: string;
   created_at: string;
   otherUserId: string;
+  otherProfile: PlayerProfile;
   messages: Message[];
 };
+type ConversationProfileRow = {
+  conversation_id: string;
+  user_id: string;
+  username: string | null;
+  display_name: string;
+};
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string };
+
+function playerLabel(profile: PlayerProfile) {
+  return profile.username ? `@${profile.username}` : (profile.display_name || "Vendrith Player");
+}
+
+function playerHandle(profile: PlayerProfile) {
+  return profile.display_name || "Display name not set";
+}
 
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -40,6 +56,11 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     if (!ids.length) {
       setConversations([]); setActiveId(""); setStatus("No conversations yet. Start one using another test player's Auth UUID."); return;
     }
+    const { data: profileRows, error: profileError } = await supabase.rpc("chat_get_conversation_profiles", {
+      p_conversation_ids: ids
+    });
+    if (profileError) throw profileError;
+    const profiles = (profileRows ?? []) as ConversationProfileRow[];
     const rows = await Promise.all(ids.map(async (id) => {
       const [conversationResult, memberResult, messageResult] = await Promise.all([
         supabase.from("chat_conversations").select("id,created_at").eq("id", id).single(),
@@ -50,10 +71,15 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
       if (memberResult.error) throw memberResult.error;
       if (messageResult.error) throw messageResult.error;
       const other = (memberResult.data ?? []).find((member: { user_id: string }) => member.user_id !== userId);
+      const otherProfileRow = profiles.find((profile) => profile.conversation_id === id && profile.user_id === other?.user_id);
       return {
         id: conversationResult.data.id,
         created_at: conversationResult.data.created_at,
         otherUserId: other?.user_id ?? "unknown",
+        otherProfile: {
+          username: otherProfileRow?.username ?? null,
+          display_name: otherProfileRow?.display_name ?? "Vendrith Player"
+        },
         messages: ((messageResult.data ?? []) as Message[]).reverse()
       };
     }));
@@ -74,26 +100,32 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  // Subscribe only to the active conversation. Postgres Changes applies the
-  // existing chat_messages SELECT grant and member-only RLS policy per user.
+  // Refresh profile labels when a player returns from Friends & Community or
+  // switches back to this tab after another member changes their profile.
+  useEffect(() => {
+    const handleFocus = () => { void loadConversations(); };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void loadConversations();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadConversations]);
+
   useEffect(() => {
     if (!activeId) return;
-
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
       .channel(`vendrith-chat:${userId}:${activeId}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-          filter: `conversation_id=eq.${activeId}`
-        },
+        { event: "INSERT", schema: "public", table: "chat_messages", filter: `conversation_id=eq.${activeId}` },
         (payload: { new: Message }) => {
           const incoming = payload.new;
           if (incoming.conversation_id !== activeId) return;
-
           setConversations((current) => {
             const updated = current.map((conversation) => {
               if (conversation.id !== activeId) return conversation;
@@ -101,9 +133,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
               return { ...conversation, messages };
             });
             return updated.sort((a, b) =>
-              (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(
-                a.messages.at(-1)?.created_at ?? a.created_at
-              )
+              (b.messages.at(-1)?.created_at ?? b.created_at).localeCompare(a.messages.at(-1)?.created_at ?? a.created_at)
             );
           });
           setStatus("Live updates connected. New messages arrive automatically.");
@@ -126,10 +156,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
           setStatus("Live updates paused.");
         }
       });
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [activeId, userId, loadConversations]);
 
   async function createConversation(event: FormEvent<HTMLFormElement>) {
@@ -173,6 +200,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   }
 
   const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
+  const otherLabel = active ? playerLabel(active.otherProfile) : "Select a conversation";
 
   return <main className="backend-test-page">
     <header className="backend-test-header">
@@ -182,10 +210,8 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <section className="backend-identity"><strong>{email ?? "Verified test player"}</strong><code>{userId}</code><span>Verified Supabase Auth identity · Non-production only</span></section>
     <section className="backend-create"><h2>Start a direct conversation</h2><form onSubmit={createConversation}><input aria-label="Recipient player UUID" placeholder="Other test player's Auth UUID" value={recipientId} onChange={(event) => setRecipientId(event.target.value)} /><button disabled={busy || !recipientId.trim()}>Create / open</button></form></section>
     <div className="backend-columns">
-      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>Player {conversation.otherUserId.slice(0, 8)}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small></button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
-      <section className="backend-thread"><h2>{active ? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><p className="backend-id">Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : "Other player"} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}
-      </section>
+      <aside className="backend-conversations"><h2>Conversations</h2>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{playerLabel(conversation.otherProfile)}</strong><small>{playerHandle(conversation.otherProfile)} · {conversation.messages.at(-1)?.body ?? "No messages yet"}</small></button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
+      <section className="backend-thread"><h2>{otherLabel}</h2>{active && <><p className="backend-id">{playerHandle(active.otherProfile)} · Conversation ID: {active.id}</p><div className="backend-messages">{active.messages.map((message) => <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}><p>{message.body}</p><small>{message.sender_id === userId ? "You" : playerLabel(active.otherProfile)} · {new Date(message.created_at).toLocaleString()}</small></article>)}</div><form className="backend-composer" onSubmit={handleSend}><input aria-label="Message composer" maxLength={4000} placeholder="Write a server-backed message…" value={draft} onChange={(event) => { setDraft(event.target.value); setFailedRequest(null); }} /><button disabled={busy || !draft.trim()}>Send</button></form>{failedRequest && <button className="backend-retry" type="button" disabled={busy} onClick={() => void sendMessage(failedRequest)}>Retry with same message ID</button>}</>}</section>
     </div>
     <div className="backend-status" role="status"><strong>{status}</strong>{error && <p>{error}</p>}<small>Live updates subscribe only to the selected conversation. If the connection drops, the client reconnects and reloads recent history. The server remains the source of truth.</small></div>
   </main>;

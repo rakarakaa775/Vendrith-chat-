@@ -2,7 +2,7 @@
 
 **Last reviewed:** 2026-11-03
 **Current phase:** Phase 6 — Social & Community
-**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on `feat/chat-engine-server-ui`; browser acceptance with two real Non-Production accounts is pending.
+**Current status:** Phase 2–5 foundations are implemented with Non-Production Auth, database authorization, and manual realtime recovery evidence; the automated authenticated two-account chat E2E and live non-member Realtime negative test remain open. Phase 6 P0 social graph backend and authenticated Friends & Community UI are implemented on `feat/chat-engine-server-ui`; conversation profile labels are now wired to current usernames/display names. Two-account browser acceptance remains pending.
 
 A phase is complete only when its acceptance criteria are verified and evidence is recorded. Work proceeds through Planning, Implementation, QA, and Verification for every phase.
 
@@ -99,12 +99,13 @@ A phase is complete only when its acceptance criteria are verified and evidence 
 - [x] Friend requests, accept/decline/cancel/remove, and block/unblock.
 - [x] Enforce blocks against discovery, friend requests, direct-conversation create/reopen, and new direct messages.
 - [x] Add authenticated Friends & Community route with profile, search, request, friend, and block management.
+- [x] Resolve current display names and @usernames in existing conversation lists and thread headers through a membership-scoped RPC; refresh labels when the chat regains focus.
 - [ ] Complete live browser acceptance with two real Non-Production accounts and automated authenticated social-flow E2E.
 - [ ] Presence with expiry and privacy controls.
 - [ ] Group conversations, membership lifecycle, and admin/moderator role permissions.
 - [ ] Reporting and moderation workflows.
 
-**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md).
+**Current evidence:** see [Phase 6 Social Graph Implementation — 2026-11-03](audits/PHASE-6-SOCIAL-GRAPH-IMPLEMENTATION-2026-11-03.md) and [Conversation Profile Display Fix — 2026-11-03](audits/CONVERSATION-PROFILE-DISPLAY-FIX-2026-11-03.md).
 
 **Exit criteria:** relationship transitions and privacy tests pass in both transactional database verification and authenticated browser flows; group authorization tests pass before Phase 6 is closed.
 
