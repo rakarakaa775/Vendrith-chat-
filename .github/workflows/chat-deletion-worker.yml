@@ -1,0 +1,41 @@
+name: Chat account deletion worker
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vendrith-chat-account-deletion-worker
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate worker configuration
+        env:
+          SUPABASE_URL: https://npvlokuszipgwrdipeoi.supabase.co
+          CHAT_DELETION_WORKER_SECRET: ${{ secrets.CHAT_DELETION_WORKER_SECRET }}
+        run: |
+          test -n "$SUPABASE_URL" || { echo 'Missing Non-Production Supabase URL'; exit 1; }
+          test -n "$CHAT_DELETION_WORKER_SECRET" || { echo 'Missing CHAT_DELETION_WORKER_SECRET secret'; exit 1; }
+          case "$SUPABASE_URL" in
+            https://npvlokuszipgwrdipeoi.supabase.co) ;;
+            *) echo 'Refusing non-Non-Production Supabase URL'; exit 1 ;;
+          esac
+      - name: Process queued deletions
+        env:
+          SUPABASE_URL: https://npvlokuszipgwrdipeoi.supabase.co
+          CHAT_DELETION_WORKER_SECRET: ${{ secrets.CHAT_DELETION_WORKER_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 90 \
+            --request POST "$SUPABASE_URL/functions/v1/process-chat-account-deletions" \
+            --header "x-worker-secret: $CHAT_DELETION_WORKER_SECRET" \
+            --header 'content-type: application/json' \
+            --data '{"batch_size":10}'
