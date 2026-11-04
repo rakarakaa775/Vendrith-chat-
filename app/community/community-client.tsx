@@ -10,6 +10,7 @@ type Profile = {
   discoverable: boolean;
   show_online_status: boolean;
   show_last_seen: boolean;
+  avatar_path?: string | null;
 };
 type SearchUser = { user_id: string; username: string; display_name: string };
 type Friend = { friend_user_id: string; username: string; display_name: string; friends_since: string };
@@ -27,6 +28,7 @@ type GroupMember = { user_id: string; role: "owner" | "admin" | "moderator" | "m
 type GroupConversation = { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string; members: GroupMember[] };
 type GroupReport = { report_id: string; target_user_id: string | null; message_id: string | null; category: string; details: string; created_at: string };
 type ModerationEvent = { id: string; actor_id: string; report_id: string | null; target_user_id: string | null; action: string; note: string; created_at: string };
+type GroupInvitation = { invitation_id: string; conversation_id: string; group_title: string; group_description: string; inviter_id: string; inviter_username: string; inviter_display_name: string; invitee_id: string; invitee_username: string; invitee_display_name: string; direction: "incoming" | "outgoing"; created_at: string };
 type Tab = "discover" | "friends" | "requests" | "blocked" | "groups" | "profile";
 
 const tabs: { id: Tab; label: string }[] = [
@@ -53,6 +55,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [presence, setPresence] = useState<Presence[]>([]);
   const [groups, setGroups] = useState<GroupConversation[]>([]);
+  const [groupInvitations, setGroupInvitations] = useState<GroupInvitation[]>([]);
   const [groupTitle, setGroupTitle] = useState("");
   const [groupMemberId, setGroupMemberId] = useState("");
   const [reportsByGroup, setReportsByGroup] = useState<Record<string, GroupReport[]>>({});
@@ -66,15 +69,16 @@ export default function CommunityClient({ userId }: { userId: string }) {
 
   const refresh = useCallback(async () => {
     setError("");
-    const [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult] = await Promise.all([
+    const [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult, invitationsResult] = await Promise.all([
       supabase.rpc("chat_get_my_profile"),
       supabase.rpc("chat_list_friends"),
       supabase.rpc("chat_list_friend_requests"),
       supabase.rpc("chat_list_blocked_users"),
       supabase.rpc("chat_list_friend_presence"),
-      supabase.from("chat_conversations").select("id,title,description,avatar_url,closed_at,created_at").eq("kind", "group").order("created_at", { ascending: false })
+      supabase.from("chat_conversations").select("id,title,description,avatar_url,closed_at,created_at").eq("kind", "group").order("created_at", { ascending: false }),
+      supabase.rpc("chat_list_group_invitations")
     ]);
-    const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult].find((item) => item.error);
+    const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult, invitationsResult].find((item) => item.error);
     if (failed?.error) throw failed.error;
 
     const ownProfile = (profileResult.data ?? null) as Profile | null;
@@ -90,6 +94,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
     setRequests((requestsResult.data ?? []) as FriendRequest[]);
     setBlocked((blockedResult.data ?? []) as BlockedUser[]);
     setPresence((presenceResult.data ?? []) as Presence[]);
+    setGroupInvitations((invitationsResult.data ?? []) as GroupInvitation[]);
     const groupRows = (groupsResult.data ?? []) as { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string }[];
     const expandedGroups = await Promise.all(groupRows.map(async (group) => {
       const [membersResult, profilesResult] = await Promise.all([
@@ -282,6 +287,51 @@ export default function CommunityClient({ userId }: { userId: string }) {
     }, "Group ownership transferred.");
   }
 
+  async function inviteGroupMember(groupId: string) {
+    if (!groupMemberId || busy) return;
+    await perform(`invite-group:${groupId}`, async () => {
+      const { error: rpcError } = await supabase.rpc("chat_create_group_invitation", {
+        p_conversation_id: groupId, p_invitee_id: groupMemberId
+      });
+      if (rpcError) throw rpcError;
+      setGroupMemberId("");
+    }, "Group invitation sent.");
+  }
+
+  async function respondGroupInvitation(invitationId: string, accept: boolean) {
+    await perform(`respond-invitation:${invitationId}`, async () => {
+      const { error: rpcError } = await supabase.rpc("chat_respond_group_invitation", {
+        p_invitation_id: invitationId, p_accept: accept
+      });
+      if (rpcError) throw rpcError;
+    }, accept ? "Group invitation accepted." : "Group invitation declined.");
+  }
+
+  async function cancelGroupInvitation(invitationId: string) {
+    await perform(`cancel-invitation:${invitationId}`, async () => {
+      const { error: rpcError } = await supabase.rpc("chat_cancel_group_invitation", {
+        p_invitation_id: invitationId
+      });
+      if (rpcError) throw rpcError;
+    }, "Group invitation cancelled.");
+  }
+
+  async function uploadProfileAvatar(file: File) {
+    const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "";
+    if (!extension || file.size < 1 || file.size > 5 * 1024 * 1024) {
+      setError("Choose a JPEG, PNG, or WebP image up to 5 MB.");
+      return;
+    }
+    await perform("avatar", async () => {
+      const path = `profiles/${userId}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("vendrith-chat-avatars")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { error: profileError } = await supabase.rpc("chat_set_profile_avatar", { p_avatar_path: path });
+      if (profileError) throw profileError;
+    }, "Profile avatar updated.");
+  }
+
   async function addGroupMember(groupId: string) {
     if (!groupMemberId || busy) return;
     await perform(`add-group-member:${groupId}`, async () => {
@@ -418,6 +468,18 @@ export default function CommunityClient({ userId }: { userId: string }) {
 
         {tab === "groups" && (
           <>
+            <div className="community-section-title"><div><h2>Group invitations</h2><p>Accept invitations from friends or cancel invitations you sent.</p></div></div>
+            <div className="community-list">
+              {groupInvitations.map((invitation) => <article className="community-group-card" key={invitation.invitation_id}>
+                <strong>{invitation.group_title}</strong>
+                <p>{invitation.direction === "incoming" ? `Invited by ${invitation.inviter_display_name} (@${invitation.inviter_username})` : `Invitation sent to ${invitation.invitee_display_name} (@${invitation.invitee_username})`}</p>
+                <small>{new Date(invitation.created_at).toLocaleString()}</small>
+                <div className="community-person-actions">
+                  {invitation.direction === "incoming" ? <><button type="button" onClick={() => void respondGroupInvitation(invitation.invitation_id, true)} disabled={Boolean(busy)}>Accept</button><button className="community-subtle-button" type="button" onClick={() => void respondGroupInvitation(invitation.invitation_id, false)} disabled={Boolean(busy)}>Decline</button></> : <button className="community-subtle-button" type="button" onClick={() => void cancelGroupInvitation(invitation.invitation_id)} disabled={Boolean(busy)}>Cancel invitation</button>}
+                </div>
+              </article>)}
+              {groupInvitations.length === 0 && <p className="community-empty">No pending group invitations.</p>}
+            </div>
             <div className="community-section-title"><div><h2>Group conversations</h2><p>Create a group with a friend and manage its member roles.</p></div></div>
             <form className="community-search community-group-create" onSubmit={createGroup}>
               <input value={groupTitle} onChange={(event) => setGroupTitle(event.target.value)} maxLength={60} placeholder="Group name…" aria-label="Group name" required />
@@ -448,7 +510,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
                       <option value="">Add a friend…</option>
                       {friends.filter((friend) => !group.members.some((member) => member.user_id === friend.friend_user_id)).map((friend) => <option key={friend.friend_user_id} value={friend.friend_user_id}>{friend.display_name}</option>)}
                     </select>
-                    <button type="button" onClick={() => void addGroupMember(group.id)} disabled={Boolean(busy) || !groupMemberId}>Add member</button>
+                    <button type="button" onClick={() => void inviteGroupMember(group.id)} disabled={Boolean(busy) || !groupMemberId}>Invite friend</button>
                   </div>}
                   {canModerate && <div className="community-group-review">
                     <button className="community-subtle-button" type="button" onClick={() => void loadGroupReports(group.id)} disabled={Boolean(busy)}>Review reports</button><button className="community-subtle-button" type="button" onClick={() => void loadModerationHistory(group.id)} disabled={Boolean(busy)}>Audit history</button>
@@ -473,6 +535,10 @@ export default function CommunityClient({ userId }: { userId: string }) {
         {tab === "profile" && (
           <>
             <div className="community-section-title"><div><h2>Your community profile</h2><p>This profile is separate from your sign-in email and is used for player discovery.</p></div></div>
+            <div className="community-profile-form">
+              <label>Profile avatar<input aria-label="Upload profile avatar" type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProfileAvatar(file); event.currentTarget.value = ""; }} /></label>
+              <small>Private avatar storage · JPEG, PNG, or WebP · maximum 5 MB. Only your account and accepted friends can read it.</small>
+            </div>
             <form className="community-profile-form" onSubmit={saveProfile}>
               <label>Username<input value={username} onChange={(event) => setUsername(event.target.value)} minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" required placeholder="your_username" /></label>
               <label>Display name<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={1} maxLength={32} required placeholder="Your display name" /></label>
