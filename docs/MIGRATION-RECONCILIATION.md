@@ -33,7 +33,7 @@ No migration was applied, rolled back, reset, or re-run during this audit.
 | `20261103175205` | `chat_list_my_sessions_v1` | Authorized session listing RPC |
 | `20261103183150` | `phase5_realtime_social_events` | Realtime social event publication |
 | `20261103184107` | `phase6_group_invites_and_avatars` | Group invitations and avatar support |
-| `20261103190412` | `phase8_chat_fk_indexes` | Chat foreign-key indexes |
+| `20261103190412` | `phase8_chat_fk_indexes` | Chat foreign-key indexes |\n| `20261104071443` | `chat_private_session_list_rpc_hardening_v1` | Move session-list SECURITY DEFINER implementation behind private schema |\n| `20261104151218` | `chat_deletion_export_operations_v1` | Account deletion queue, export audit, and worker RPCs |
 
 The database also contains the three earlier Chat migrations and the later Chat migrations that are already committed. The exact complete version list must be re-read at the start of any future reconciliation operation.
 
@@ -53,3 +53,22 @@ The database also contains the three earlier Chat migrations and the later Chat 
 <badge>Blocked — source reconstruction required</badge>
 
 The migration history proves these versions were recorded in Non-Production, but the migration history does not contain the original SQL bodies. Recreating exact source files safely requires catalog-level extraction and review. This document intentionally does not fabricate SQL or mark the repository reproducible.
+
+
+## Recovery progress — 2026-11-04
+
+A previous repository branch, `feat/chat-engine-server-ui`, contains source SQL for nine of the missing migrations. Those files have been copied without changing their SQL bodies into this reconciliation branch, using the exact version prefixes and names recorded by the Non-Production migration history:
+
+- `20261103032402_chat_social_graph_v1.sql`
+- `20261103032544_chat_social_directory_rpcs_v1.sql`
+- `20261103034300_chat_conversation_profiles_v1.sql`
+- `20261103035600_chat_friend_presence_v1.sql`
+- `20261103040851_chat_profile_presence_column_grants_v1.sql`
+- `20261103045533_chat_group_conversations_v1.sql`
+- `20261103045720_chat_group_two_member_minimum_v1.sql`
+- `20261103051345_group_reporting_moderation_v1.sql`
+- `20261103051548_group_report_resolution_validation_v1.sql`
+
+A fresh migration-history read on 2026-11-04 identified 20 Chat-specific migration sources missing from `main`, not 18. The two additional versions are `20261104071443_chat_private_session_list_rpc_hardening_v1` and `20261104151218_chat_deletion_export_operations_v1`.
+
+**Remaining:** 11 migration sources still require authoritative recovery or catalog-based reconstruction and review. The nine recovered files have not been replayed or applied to any database. Their source/version alignment and dependency order still require review before a disposable clean-database rehearsal. No existing Non-Production migration was reapplied, and Production was not accessed for changes.
