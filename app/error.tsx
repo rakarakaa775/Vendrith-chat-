@@ -2,13 +2,13 @@
 
 import { useEffect } from "react";
 
-export default function ErrorBoundary({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function ErrorBoundary({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     // Do not emit error messages, request payloads, tokens, or user content.
     // A deployment-level log can correlate this digest with the runtime event.
     // eslint-disable-next-line no-console
-    console.error("[vendrith-chat] route_error", { digest: (arguments as unknown as { digest?: string }).digest ?? null });
-  }, []);
+    console.error("[vendrith-chat] route_error", { digest: error.digest ?? null });
+  }, [error.digest]);
 
   return (
     <main className="auth-status" role="alert" aria-live="assertive">
