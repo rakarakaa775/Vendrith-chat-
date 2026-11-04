@@ -1,6 +1,6 @@
 # Vendrith Chat — Implementation Roadmap
 
-**Last reviewed:** 2026-11-03
+**Last reviewed:** 2026-11-04
 **Active branch:** main
 **Execution mode:** Implementation-first. All test execution, QA runs, manual acceptance checks, and verification gates are deferred until every planned implementation phase is complete.
 **Environment boundary:** Vendrith Non-Production E2E only (npvlokuszipgwrdipeoi). No production World of Vendrith Auth, schema, data, storage, or settings changes.
@@ -81,7 +81,7 @@
 - [x] Subscribe to all visible conversations and reconcile incoming messages.
 - [x] Refresh persisted history after subscription and clean up subscriptions on navigation.
 - [x] Realtime latest-message previews and unread badge updates across all visible conversations; newly created conversations still refresh through the standard list reload.
-- [ ] Realtime events for friend requests and relationship changes.
+- [x] Community client subscribes to friend-request, group-invitation, and own group-membership changes and refreshes server-backed state; final event delivery verification is deferred.
 - [ ] Presence channels with expiry, privacy settings, and approximate status semantics.
 - [ ] Realtime group membership and role-change events.
 - [ ] Shared reconnect/backoff lifecycle and app-wide connection status.
@@ -109,21 +109,25 @@
 - [x] Notification read/unread state, inbox controls, and realtime inbox refresh; [x] message/group and friend-request notification deep links.
 - [ ] Evaluate push provider and cost/privacy before external push implementation.
 - [x] Persisted message reactions, same-conversation reply context, and author-only 15-minute edit/soft-delete; [ ] pinned messages.
-- [ ] Accessibility and localization foundations.
+- [x] Route error and not-found states provide accessible recovery messaging; message pin controls include labels and keyboard-operable buttons.
+- [ ] Broader accessibility audit and localization foundation remain open.
 
 ## Phase 8 — Security, Operations & Production Preparation
 **Status:** Security hardening has progressed, but retention/export, observability, deployment preparation, and production integration documentation remain. No production connection is permitted during this pass.
 - [ ] Consolidated authorization model and least-privilege database grants.
 - [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
-- [ ] Data retention, account deletion/export, backup/restore, and recovery procedures.
-- [ ] Operational logging, error reporting, observability, and incident response.
+- [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has account-deletion/tombstone/shared-history migrations.
+- [x] Backup/restore and incident-response runbook documented.
+- [ ] Retention windows require product approval; export endpoint/UX, scheduled cleanup, and a rehearsed restore remain open.
+- [x] Privacy-safe route error boundary logs only a non-content digest; incident response and log privacy guidance documented.
+- [ ] Centralized structured telemetry, alerting, dashboards, and provider-backed error reporting remain open.
 - [x] Cursor-based 50-message history pagination; [ ] large-group pagination and broader performance tuning.
-- [ ] Deployment configuration and environment separation documentation.
-- [ ] Production integration plan for shared World of Vendrith identity, requiring separate explicit approval.
+- [x] Non-Production deployment, environment separation, CI secret names, callback rules, and rollback guidance documented in `docs/DEPLOYMENT.md`.
+- [x] Draft shared-identity integration contract exists in `docs/IDENTITY-INTEGRATION.md`; production integration remains prohibited and requires separate explicit approval.
 
 ## Repository/database migration reconciliation
 
-- [ ] Reconstruct and commit the nine already-applied Non-Production migrations still missing from the repository: `20261103032402`, `20261103032544`, `20261103034300`, `20261103035600`, `20261103040851`, `20261103045533`, `20261103045720`, `20261103051345`, and `20261103051548`.
+- [ ] Reconstruct and commit the 18 Chat-specific Non-Production migrations missing from the repository. Exact versions, names, and safe reconstruction procedure are recorded in `docs/MIGRATION-RECONCILIATION.md`. Do not copy World of Vendrith/game-domain migrations into this repository.
 - [ ] Ensure future clean environment setup can reproduce the Non-Production Chat schema without reapplying migrations to the existing Non-Production database.
 
 ## Final deferred verification phase
