@@ -13,9 +13,9 @@
 
 ## Current deletion behavior evidenced in Non-Production schema
 
-The Chat profile schema includes `deleted_at` and documents a non-discoverable pseudonymous tombstone used to render shared historical messages as “Deleted account”. The Non-Production migration history includes account-deletion workflow and shared-history preservation migrations.
+The Chat profile schema includes `deleted_at` and documents a non-discoverable pseudonymous tombstone used to render shared historical messages as “Deleted account”. The Non-Production migration history includes account-deletion and shared-history-preservation versions, and a `chat_account_deletion_jobs` table exists.
 
-This indicates that account deletion is designed not to erase other participants' conversation history indiscriminately. It does not, by itself, prove that every Auth, Storage, notification, report, export, or backup artifact is handled correctly. That requires source reconciliation and negative/positive tests.
+A read-only catalog inspection did not find a public account-deletion request RPC or a trigger attached to the job table/Auth users that proves the workflow is being processed. Therefore, the migration/table presence is not evidence that end-user deletion is operational. A worker or approved server-side orchestration path, idempotency/retry behavior, and full Auth/Storage cleanup still need implementation and verification.
 
 ## Retention policy decisions still required
 
