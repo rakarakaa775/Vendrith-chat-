@@ -57,7 +57,7 @@
 - [x] Supabase Auth email/password registration and sign-in UI.
 - [x] SSR clients, middleware, protected route, callback, sign-out, and password reset routes.
 - [x] Verified Auth UUID / JWT subject as canonical player identity.
-- [x] Account settings UI, password change, current-session details, and sign-out-other-sessions; [ ] full device/session enumeration requires a server-authorized management API.
+- [x] Account settings UI, password change, current-session details, sign-out-other-sessions, and server-authorized session inventory through `chat_list_my_sessions`; [ ] per-device revocation remains unavailable through the current browser Auth API.
 - [x] Chat-owned display profile editor with server-side profile upsert and presence privacy controls; editable profile fields are presentation-only.
 - [ ] Document identity handoff for eventual World of Vendrith integration; production connection remains prohibited.
 
