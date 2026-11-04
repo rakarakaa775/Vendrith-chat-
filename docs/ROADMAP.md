@@ -114,7 +114,7 @@
 **Status:** Security hardening and operational documentation have progressed. Retention policy approval, export/cleanup implementation, centralized observability, rehearsed recovery, migration-source reconciliation, and production integration approval remain. No production connection is permitted during this pass.
 - [ ] Consolidated authorization model and least-privilege database grants; advisor snapshot found a public-schema `SECURITY DEFINER` session-list RPC that is authenticated-only and actor-scoped but should be moved behind a private-schema implementation.
 - [x] Abuse prevention, verified-UUID rate limits, reporting, moderation RPCs, and append-only moderation event storage exist in Non-Production.\n- [ ] Approve and enforce retention periods for moderation/audit records.
-- [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has account-deletion/tombstone/shared-history migrations.
+- [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has tombstone/shared-history structures.\n- [ ] Account-deletion job processor/request path was not found in the catalog and still needs implementation; export endpoint/UX and cleanup remain open.
 - [x] Backup/restore and incident-response runbook documented.
 - [ ] Retention windows require product approval; export endpoint/UX, scheduled cleanup, and a rehearsed restore remain open.
 - [x] Privacy-safe route error boundary logs only a non-content digest; incident response and log privacy guidance documented.
