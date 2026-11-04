@@ -27,12 +27,10 @@
 - Local preview remains available without backend configuration; authenticated main route uses the server-backed chat component.
 
 ### Remaining product capabilities
-- Private media/file attachments, storage authorization, quotas, and abuse controls.
-- Account/session settings and device/session management.
-- Group invitation/join flow, avatar upload, and deletion policy.
-- Friend-request preference controls and app-wide presence/reconnect improvements.
-- Notification deep links and external push evaluation.
-- Pinned messages, accessibility/localization, retention/export, observability, and production integration package.
+- Group avatar display/cleanup, account deletion UX, and a user-facing data export flow.
+- Friend-request preference controls and a shared app-wide presence/reconnect lifecycle.
+- External push evaluation; external push remains deferred pending privacy/cost approval.
+- Broader accessibility/localization, retention automation, observability, migration-source reconciliation, and production integration package.
 
 ## Phase 1 — Foundation
 **Status:** Existing foundation retained.
@@ -87,7 +85,7 @@
 - [ ] Shared reconnect/backoff lifecycle and app-wide connection status.
 
 ## Phase 6 — Social & Community
-**Status:** Core social graph, profile privacy, groups, moderation, ownership transfer, group closure, and audit UI are implemented; invitation flow, avatars, and deletion policy remain.
+**Status:** Core social graph, profile privacy, groups, moderation, ownership transfer, group closure, audit UI, group invitation actions, and private profile/group avatar upload are implemented in the client; group avatar display/cleanup and account deletion UX remain.
 - [x] Player discovery/search through rate-limited RPC using public username/display name only; email addresses are not exposed.
 - [x] Friend request creation, incoming/outgoing lists, accept, reject, and cancel.
 - [x] Friend list, remove friend, and relationship state synchronization.
@@ -101,7 +99,7 @@
 - [x] Community moderation report submission, report review, dismiss/member-removal controls, and role-restricted audit-history presentation.
 
 ## Phase 7 — Media & Advanced Features
-**Status:** Notifications, reactions, replies, message edit/delete, and inbox are implemented; private media/storage, pinned messages, accessibility, and localization remain.
+**Status:** Notifications, reactions, replies, message edit/delete, private media/storage, pinned-message controls, and basic accessible error recovery are implemented; broader accessibility and localization remain.
 - [x] Private image/file upload and download in the authenticated conversation view.
 - [x] MIME allow-list, 10 MB per-file limit, generated storage paths, 100 MB account quota, and 25 MB daily upload quota enforced before upload.
 - [x] Private Storage reads restricted by RLS to members of the owning conversation; uploads require a short-lived pending metadata authorization.
@@ -113,7 +111,7 @@
 - [ ] Broader accessibility audit and localization foundation remain open.
 
 ## Phase 8 — Security, Operations & Production Preparation
-**Status:** Security hardening has progressed, but retention/export, observability, deployment preparation, and production integration documentation remain. No production connection is permitted during this pass.
+**Status:** Security hardening and operational documentation have progressed. Retention policy approval, export/cleanup implementation, centralized observability, rehearsed recovery, migration-source reconciliation, and production integration approval remain. No production connection is permitted during this pass.
 - [ ] Consolidated authorization model and least-privilege database grants.
 - [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
 - [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has account-deletion/tombstone/shared-history migrations.
