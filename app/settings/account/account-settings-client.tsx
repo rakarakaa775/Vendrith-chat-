@@ -3,10 +3,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "../../../lib/supabase/browser";
 
+type SessionRecord = { id: string; created_at: string; updated_at: string; refreshed_at: string | null; user_agent: string | null; tag: string | null; is_current: boolean };
+
 export default function AccountSettingsClient() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -15,13 +18,15 @@ export default function AccountSettingsClient() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]).then(([userResult, sessionResult]) => {
+    void Promise.all([supabase.auth.getUser(), supabase.auth.getSession(), supabase.rpc("chat_list_my_sessions")]).then(([userResult, sessionResult, sessionsResult]) => {
       if (cancelled) return;
       if (userResult.error) setError(userResult.error.message);
       else setEmail(userResult.data.user?.email ?? "");
       if (sessionResult.error) setError(sessionResult.error.message);
       else setExpiresAt(sessionResult.data.session?.expires_at ?? null);
-      setNotice("Current authenticated session loaded.");
+      if (sessionsResult.error) setError(sessionsResult.error.message);
+      else setSessions((sessionsResult.data ?? []) as SessionRecord[]);
+      setNotice("Account and authorized session list loaded.");
     });
     return () => { cancelled = true; };
   }, [supabase]);
@@ -57,7 +62,9 @@ export default function AccountSettingsClient() {
     <header className="community-header"><div><p className="auth-eyebrow">VENDRITH CHAT SECURITY</p><h1>Account & sessions</h1><p>Manage the password and active sign-in sessions for this Non-Production Chat account.</p></div><div className="community-header-actions"><a href="/">Back to chat</a></div></header>
     <section className="account-settings-card">
       <h2>Current account</h2><p><strong>Email:</strong> {email || "Unavailable"}</p><p><strong>Current session expires:</strong> {expiresAt ? new Date(expiresAt * 1000).toLocaleString() : "Unavailable"}</p>
-      <p className="community-profile-note">For privacy, session tokens are never displayed. This page shows the current session only; Supabase client Auth does not provide a safe browser API to enumerate every device session.</p>
+      <p className="community-profile-note">Session identifiers and tokens are never displayed. Device details are approximate metadata supplied by the session record.</p>
+      <h3>Signed-in sessions</h3>
+      <div className="account-session-list">{sessions.map((session) => <article className="account-session" key={session.id}><strong>{session.is_current ? "This device" : session.tag || "Other device"}</strong><span>{session.user_agent || "Device details unavailable"}</span><small>Started {new Date(session.created_at).toLocaleString()} · Last refreshed {session.refreshed_at ? new Date(session.refreshed_at).toLocaleString() : "Unknown"}</small>{session.is_current && <small>Current session</small>}</article>)}{sessions.length === 0 && <p>No session records were returned.</p>}</div>
       <button type="button" className="community-danger-button" disabled={busy} onClick={() => void signOutOtherSessions()}>Sign out other sessions</button>
     </section>
     <section className="account-settings-card">
