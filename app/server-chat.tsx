@@ -235,10 +235,10 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     void createSupabaseBrowserClient().from("chat_message_pins")
       .select("id,conversation_id,message_id,pinned_by,pinned_at")
       .eq("conversation_id", activeId).order("pinned_at", { ascending: false })
-      .then(({ data, error: pinError }) => {
+      .then((result: { data: MessagePin[] | null; error: { message: string } | null }) => {
         if (cancelled) return;
-        if (pinError) setError(pinError.message);
-        else setPins((data ?? []) as MessagePin[]);
+        if (result.error) setError(result.error.message);
+        else setPins(result.data ?? []);
       });
     return () => { cancelled = true; };
   }, [activeId]);
