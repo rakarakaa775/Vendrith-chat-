@@ -31,6 +31,7 @@ type Conversation = {
 };
 type PendingMessage = { conversationId: string; clientMessageId: string; body: string; replyToMessageId?: string | null };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
+type MessagePin = { id: string; conversation_id: string; message_id: string; pinned_by: string; pinned_at: string };
 type Attachment = { id: string; conversation_id: string; uploader_id: string; object_path: string; original_name: string; mime_type: string; byte_size: number; created_at: string };
 
 export default function ServerChat({ userId, email }: { userId: string; email?: string }) {
@@ -48,6 +49,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
   const [status, setStatus] = useState("Loading your server conversations…");
   const [failedRequest, setFailedRequest] = useState<PendingMessage | null>(null);
   const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [pins, setPins] = useState<MessagePin[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const loadConversations = useCallback(async () => {
@@ -227,6 +229,41 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     }
   }
 
+  useEffect(() => {
+    if (!activeId) { setPins([]); return; }
+    let cancelled = false;
+    void createSupabaseBrowserClient().from("chat_message_pins")
+      .select("id,conversation_id,message_id,pinned_by,pinned_at")
+      .eq("conversation_id", activeId).order("pinned_at", { ascending: false })
+      .then(({ data, error: pinError }) => {
+        if (cancelled) return;
+        if (pinError) setError(pinError.message);
+        else setPins((data ?? []) as MessagePin[]);
+      });
+    return () => { cancelled = true; };
+  }, [activeId]);
+
+  async function togglePin(messageId: string) {
+    if (busy || !active) return;
+    setBusy(true); setError("");
+    try {
+      const isPinned = pins.some((pin) => pin.message_id === messageId);
+      const { error: pinError } = await createSupabaseBrowserClient().rpc(
+        isPinned ? "chat_unpin_message" : "chat_pin_message",
+        { p_message_id: messageId }
+      );
+      if (pinError) throw pinError;
+      const { data, error: refreshError } = await createSupabaseBrowserClient().from("chat_message_pins")
+        .select("id,conversation_id,message_id,pinned_by,pinned_at")
+        .eq("conversation_id", active.id).order("pinned_at", { ascending: false });
+      if (refreshError) throw refreshError;
+      setPins((data ?? []) as MessagePin[]);
+      setStatus(isPinned ? "Message unpinned." : "Message pinned for this conversation.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update pinned messages.");
+    } finally { setBusy(false); }
+  }
+
   async function toggleReaction(messageId: string, emoji: string) {
     const { error: reactionError } = await createSupabaseBrowserClient().rpc("chat_toggle_message_reaction", {
       p_message_id: messageId, p_emoji: emoji
@@ -402,12 +439,12 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
     <div className="backend-columns">
       <aside className="backend-conversations"><div className="backend-conversations-heading"><h2>{showArchived ? "Archived" : "Conversations"}</h2><button type="button" onClick={() => setShowArchived((current) => !current)}>{showArchived ? "Show active" : "Show archived"}</button></div>{conversations.map((conversation) => <button type="button" key={conversation.id} className={activeId === conversation.id ? "active" : ""} onClick={() => setActiveId(conversation.id)}><strong>{conversation.kind === "group" ? conversation.title || "Group conversation" : conversation.members.find((member) => member.user_id === conversation.otherUserId)?.display_name ?? `Player ${conversation.otherUserId.slice(0, 8)}`}</strong><small>{conversation.messages.at(-1)?.body ?? "No messages yet"}</small>{conversation.unreadCount > 0 && <span className="conversation-unread-count" aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>}</button>)}{!conversations.length && <p>{loading ? "Loading…" : "No server conversations yet."}</p>}</aside>
       <section className="backend-thread"><h2>{active ? active.kind === "group" ? active.title || "Group conversation" : active.members.find((member) => member.user_id === active.otherUserId)?.display_name ?? `Player ${active.otherUserId.slice(0, 8)}` : "Select a conversation"}</h2>
-        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}{active.closedAt ? " · Closed (read-only)" : ""}</p><button type="button" onClick={() => void setActiveConversationArchived(!active.archivedAt)} disabled={busy}>{active.archivedAt ? "Restore for me" : "Archive for me"}</button></div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
+        {active && <><div className="backend-thread-tools"><p className="backend-id">Conversation ID: {active.id}{active.closedAt ? " · Closed (read-only)" : ""}</p><button type="button" onClick={() => void setActiveConversationArchived(!active.archivedAt)} disabled={busy}>{active.archivedAt ? "Restore for me" : "Archive for me"}</button></div><div className="backend-pinned-messages" aria-label="Pinned messages"><strong>Pinned messages ({pins.length}/10)</strong>{pins.map((pin) => { const pinnedMessage = active.messages.find((item) => item.id === pin.message_id); return <div key={pin.id}><button type="button" onClick={() => document.getElementById(`message-${pin.message_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>{pinnedMessage?.body ?? "Pinned message"}</button><small>{new Date(pin.pinned_at).toLocaleString()}</small></div>; })}{!pins.length && <small>No pinned messages.</small>}</div><div className="backend-messages">{active.hasMore && <button type="button" className="backend-load-older" disabled={loadingOlder} onClick={() => void loadOlderMessages()}>{loadingOlder ? "Loading older messages…" : "Load older messages"}</button>}{active.messages.map((message) => {
           const messageReactions = reactions.filter((reaction) => reaction.message_id === message.id);
-          return <article key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
+          return <article id={`message-${message.id}`} key={message.id} className={message.sender_id === userId ? "mine" : "theirs"}>
             {message.reply_to_message_id && <blockquote className="message-reply-context">{active.messages.find((item) => item.id === message.reply_to_message_id)?.body ?? "Original message"}</blockquote>}<p>{message.body}</p>
             <small>{message.edited_at ? "Edited · " : ""}{message.sender_id === userId ? "You" : active.members.find((member) => member.user_id === message.sender_id)?.display_name ?? "Other player"} · {new Date(message.created_at).toLocaleString()}</small>
-            <div className="message-action-row">{!message.is_deleted && <button type="button" className="message-reply-button" onClick={() => setReplyTo(message)}>Reply</button>}{message.sender_id === userId && !message.is_deleted && Date.now() - new Date(message.created_at).getTime() <= 15 * 60 * 1000 && <><button type="button" className="message-reply-button" onClick={() => void editMessage(message)} disabled={busy}>Edit</button><button type="button" className="message-reply-button" onClick={() => void deleteMessage(message)} disabled={busy}>Delete</button></>}</div><div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
+            <div className="message-action-row">{!message.is_deleted && <><button type="button" className="message-reply-button" onClick={() => setReplyTo(message)}>Reply</button><button type="button" className="message-reply-button" onClick={() => void togglePin(message.id)} disabled={busy}>{pins.some((pin) => pin.message_id === message.id) ? "Unpin" : "Pin"}</button></>}{message.sender_id === userId && !message.is_deleted && Date.now() - new Date(message.created_at).getTime() <= 15 * 60 * 1000 && <><button type="button" className="message-reply-button" onClick={() => void editMessage(message)} disabled={busy}>Edit</button><button type="button" className="message-reply-button" onClick={() => void deleteMessage(message)} disabled={busy}>Delete</button></>}</div><div className="message-reactions">{["👍","❤️","😂","😮","😢","🙏"].map((emoji) => {
               const matching = messageReactions.filter((reaction) => reaction.emoji === emoji);
               const selected = matching.some((reaction) => reaction.user_id === userId);
               return <button type="button" key={emoji} className={selected ? "selected" : ""} aria-label={`React with ${emoji}`} onClick={() => void toggleReaction(message.id, emoji)}>{emoji}{matching.length > 0 && <span>{matching.length}</span>}</button>;
