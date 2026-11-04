@@ -122,11 +122,34 @@ export default function CommunityClient({ userId }: { userId: string }) {
       setError(cause instanceof Error ? cause.message : "Could not load community data.");
       setNotice("Community data could not be loaded.");
     });
+    const socialChannel = supabase.channel(`vendrith-social:${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_friend_requests", filter: `recipient_id=eq.${userId}` }, () => {
+        void refresh().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not refresh friend requests."));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_friend_requests", filter: `sender_id=eq.${userId}` }, () => {
+        void refresh().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not refresh friend requests."));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_group_invitations", filter: `invitee_id=eq.${userId}` }, () => {
+        void refresh().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not refresh group invitations."));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_group_invitations", filter: `inviter_id=eq.${userId}` }, () => {
+        void refresh().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not refresh group invitations."));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_members", filter: `user_id=eq.${userId}` }, () => {
+        void refresh().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not refresh group membership."));
+      })
+      .subscribe((channelStatus: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED") => {
+        if (channelStatus === "SUBSCRIBED") setNotice("Community live updates connected.");
+        if (channelStatus === "CHANNEL_ERROR" || channelStatus === "TIMED_OUT") setNotice("Community live updates disconnected; reconnecting. Use Refresh if needed.");
+      });
     void supabase.rpc("chat_presence_heartbeat");
     const heartbeat = window.setInterval(() => {
       void supabase.rpc("chat_presence_heartbeat");
     }, 45000);
-    return () => window.clearInterval(heartbeat);
+    return () => {
+      window.clearInterval(heartbeat);
+      void supabase.removeChannel(socialChannel);
+    };
   }, [refresh, supabase]);
 
   async function perform(key: string, action: () => Promise<void>, success: string) {
