@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,8 +38,8 @@ jobs:
           # Keep this restricted to the explicitly approved Non-Production Supabase project.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          E2E_ACCOUNT_1_EMAIL: ${{ secrets.E2E_ACOOUNT_1_EMAIL }}
-          E2E_ACCOUNT_1_PASSWORD: ${{ secrets.E2E_ACOOUNT_1_PASSWORD }}
+          E2E_ACCOUNT_1_EMAIL: ${{ secrets.E2E_ACCOUNT_1_EMAIL }}
+          E2E_ACCOUNT_1_PASSWORD: ${{ secrets.E2E_ACCOUNT_1_PASSWORD }}
           E2E_SUPABASE_AUTH: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY != '' && '1' || '0' }}
       - name: Production build
         run: npm run build
