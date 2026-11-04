@@ -102,3 +102,18 @@ The following still need source recovery or full catalog-level reconstruction:
 The migration history proves these versions were recorded in Non-Production, but migration history does not contain the original SQL bodies. Nine historical source files are recovered. Catalog queries confirm several live objects relevant to the remaining migrations, but the definitions, policies, triggers, grants, publication memberships, and FK/index inventory have not yet been extracted comprehensively enough to author safe reconstructed migration files.
 
 No existing Non-Production migration was reapplied. Production was not changed. No clean-database rehearsal or Chat QA/E2E was run.
+
+
+### Additional catalog pass — constraints, triggers, and indexes
+
+A second read-only catalog pass extracted current constraints and trigger definitions for the Chat tables. Evidence includes:
+
+- Pinned messages: unique `(conversation_id, message_id)`, foreign keys to conversations/messages/auth users, and cascade behavior.
+- Group invitations: distinct inviter/invitee check, status constraint, conversation/user foreign keys, plus pending inbox/outbox and uniqueness indexes.
+- Account deletion jobs: primary key on `user_id`, non-negative attempts check, constrained lifecycle status values, and partial claim index over due queued/failed jobs.
+- Export audit: primary key, JSON object check for row counts, and per-user descending timestamp index.
+- Attachment constraints: 1–10 MB byte-size limit, allowed MIME list, filename length, pending/ready status, object-path uniqueness, and conversation/uploader foreign keys.
+- Realtime-related trigger inventory currently includes group invitation cancellation on group close, friendship end, and inviter membership removal, plus friend/group notification triggers.
+- The query returned no Chat-named publication table rows for the publication filter used; this is not enough to conclude the social Realtime migration has no publication entries. Publication membership needs a separate exact query against `pg_publication_tables` and `pg_publication`.
+
+This second pass improves the reconstruction evidence but still does not establish the exact historical migration bodies or fully cover all grants, policies, and function definitions.
