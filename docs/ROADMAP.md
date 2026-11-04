@@ -112,8 +112,8 @@
 
 ## Phase 8 — Security, Operations & Production Preparation
 **Status:** Security hardening and operational documentation have progressed. Retention policy approval, export/cleanup implementation, centralized observability, rehearsed recovery, migration-source reconciliation, and production integration approval remain. No production connection is permitted during this pass.
-- [ ] Consolidated authorization model and least-privilege database grants.
-- [ ] Abuse prevention, rate-limit policy, reporting, moderation, and audit retention.
+- [ ] Consolidated authorization model and least-privilege database grants; advisor snapshot found a public-schema `SECURITY DEFINER` session-list RPC that is authenticated-only and actor-scoped but should be moved behind a private-schema implementation.
+- [x] Abuse prevention, verified-UUID rate limits, reporting, moderation RPCs, and append-only moderation event storage exist in Non-Production.\n- [ ] Approve and enforce retention periods for moderation/audit records.
 - [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has account-deletion/tombstone/shared-history migrations.
 - [x] Backup/restore and incident-response runbook documented.
 - [ ] Retention windows require product approval; export endpoint/UX, scheduled cleanup, and a rehearsed restore remain open.
