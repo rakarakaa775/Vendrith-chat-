@@ -285,6 +285,25 @@ export default function CommunityClient({ userId }: { userId: string }) {
     }, decision === "dismiss" ? "Report dismissed." : "Reported member removed.");
   }
 
+  async function uploadGroupAvatar(group: GroupConversation, file: File) {
+    const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "";
+    if (!extension || file.size < 1 || file.size > 5 * 1024 * 1024) {
+      setError("Choose a JPEG, PNG, or WebP image up to 5 MB.");
+      return;
+    }
+    await perform(`group-avatar:${group.id}`, async () => {
+      const path = `groups/${group.id}/${userId}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("vendrith-chat-avatars")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { error: metadataError } = await supabase.rpc("chat_update_group_metadata", {
+        p_conversation_id: group.id, p_title: group.title,
+        p_description: group.description, p_avatar_url: path
+      });
+      if (metadataError) throw metadataError;
+    }, "Group avatar updated.");
+  }
+
   async function editGroupMetadata(group: GroupConversation) {
     const nextTitle = window.prompt("Group name (1–64 characters):", group.title);
     if (nextTitle === null) return;
@@ -518,7 +537,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
                 const canManage = myRole === "owner" || myRole === "admin";
                 const canModerate = canManage || myRole === "moderator";
                 return <article className="community-group-card" key={group.id}>
-                  <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}{group.closed_at ? " · Closed" : ""}</span>{group.description && <p>{group.description}</p>}</div><div>{(myRole === "owner" || myRole === "admin") && !group.closed_at && <button className="community-subtle-button" type="button" onClick={() => void editGroupMetadata(group)} disabled={Boolean(busy)}>Edit details</button>}{myRole === "owner" && !group.closed_at && <button className="community-danger-button" type="button" onClick={() => { if (window.confirm("Close this group for everyone? Members will keep read access, but new messages will be blocked.")) void perform(`close-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_close_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "Group closed. Members retain read access."); }} disabled={Boolean(busy)}>Close group</button>}<button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div></div>
+                  <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}{group.closed_at ? " · Closed" : ""}</span>{group.description && <p>{group.description}</p>}</div><div>{(myRole === "owner" || myRole === "admin") && !group.closed_at && <button className="community-subtle-button" type="button" onClick={() => void editGroupMetadata(group)} disabled={Boolean(busy)}>Edit details</button>}{(myRole === "owner" || myRole === "admin") && !group.closed_at && <label className="community-subtle-button">Upload group avatar<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadGroupAvatar(group, file); event.currentTarget.value = ""; }} /></label>}{myRole === "owner" && !group.closed_at && <button className="community-danger-button" type="button" onClick={() => { if (window.confirm("Close this group for everyone? Members will keep read access, but new messages will be blocked.")) void perform(`close-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_close_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "Group closed. Members retain read access."); }} disabled={Boolean(busy)}>Close group</button>}<button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div></div>
                   {group.members.map((member) => <div className="community-group-member" key={member.user_id}>
                     <span>{member.display_name} <small>@{member.username}</small></span>
                     <strong>{member.role}</strong>
