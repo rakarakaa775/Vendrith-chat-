@@ -111,6 +111,25 @@ The reconstructed migration was compared with the current live definitions:
 
 A local untracked draft named `20261104100000_chat_deletion_export_operations_v1.sql` had no Git-history provenance and did not use the exact version recorded in Supabase. It was not copied under that name or claimed as historical source. Its contents were used only as a review lead; the committed `20261104151218` file has an explicit catalog-reconstruction header.
 
+## Disposable clean-database rehearsal — 2026-11-05
+
+A local-only rehearsal was completed from a fresh temporary Supabase project directory at `/tmp/vendrith-chat-rehearsal`. The temporary config used project ID `vendrith-chat-rehearsal`; Supabase CLI reported the project as **Not linked**. No remote Supabase project was targeted.
+
+Results:
+
+- `supabase db start` initialized a fresh local PostgreSQL 17 database and applied all 42 repository migrations in order, including all 20 reconciled versions.
+- `supabase migration list` showed every local version paired with the same version in the local database; no missing or pending migration version appeared.
+- A direct local PostgreSQL catalog check returned 42 migration records and confirmed the expected pinned-message, group-invitation, account-deletion, and export tables plus the session-list, deletion-claim, cross-product-reference, and membership functions.
+- `pglast` parsed all 42 migration files with zero top-level SQL parse failures.
+- `git diff --check` was clean in the isolated recovery worktree.
+
+Scope of this validation:
+
+- The database-only Supabase CLI path succeeded. A full `supabase start` attempt did apply migrations but later stopped because optional Analytics, Vector, and Studio services failed their health checks in this Codespaces container. Those optional services are not required for the database-only migration rehearsal.
+- PostgreSQL executed the migration DDL and function creation successfully. This is stronger than static parsing, but it does not exercise application-level authorization flows or worker behavior.
+- No application QA/E2E was run. The repository's pull-request CI workflow automatically runs Playwright E2E, so no PR was opened while QA/E2E remains deferred until Phase 9.
+- No migration was applied to the shared Non-Production Supabase project. Production was not accessed or changed.
+
 ## Required reconciliation procedure
 
 1. Retrieve original SQL for each missing version from an authoritative Git history/source, if available.
@@ -128,7 +147,7 @@ A local untracked draft named `20261104100000_chat_deletion_export_operations_v1
 
 All 20 migration versions recorded in Non-Production now have corresponding files in this branch. The 18 historical files were verified against their source Git blobs by exact hash comparison. The remaining two files are catalog reconstructions and are labeled as such. A PostgreSQL SQL parser successfully parsed all 42 migration files in the branch; this checks top-level SQL syntax but does not compile PL/pgSQL function bodies. No disposable database replay has been performed, so migration reproducibility is not yet proven.
 
-No existing Non-Production migration was reapplied. Production was not changed. No clean-database rehearsal or Chat QA/E2E was run; QA/E2E remains deferred until Phase 9.
+No existing Non-Production migration was reapplied. Production was not changed. A clean local database-only rehearsal passed; Chat QA/E2E remains deferred until Phase 9.
 
 
 ### Additional catalog pass — constraints, triggers, and indexes
