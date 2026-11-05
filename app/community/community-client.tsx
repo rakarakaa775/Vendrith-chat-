@@ -11,9 +11,10 @@ type Profile = {
   show_online_status: boolean;
   show_last_seen: boolean;
   avatar_path?: string | null;
+  allow_friend_requests?: boolean;
 };
 type SearchUser = { user_id: string; username: string; display_name: string };
-type Friend = { friend_user_id: string; username: string; display_name: string; friends_since: string };
+type Friend = { friend_user_id: string; username: string; display_name: string; friends_since: string; avatar_display_url?: string | null };
 type FriendRequest = {
   request_id: string;
   other_user_id: string;
@@ -25,7 +26,7 @@ type FriendRequest = {
 type BlockedUser = { blocked_user_id: string; username: string; display_name: string; blocked_at: string };
 type Presence = { friend_user_id: string; is_online: boolean; last_seen_at: string | null };
 type GroupMember = { user_id: string; role: "owner" | "admin" | "moderator" | "member"; username: string; display_name: string };
-type GroupConversation = { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string; members: GroupMember[] };
+type GroupConversation = { id: string; title: string; description: string; avatar_path: string | null; avatar_url: string | null; avatar_display_url?: string | null; closed_at: string | null; created_at: string; members: GroupMember[] };
 type GroupReport = { report_id: string; target_user_id: string | null; message_id: string | null; category: string; details: string; created_at: string };
 type ModerationEvent = { id: string; actor_id: string; report_id: string | null; target_user_id: string | null; action: string; note: string; created_at: string };
 type GroupInvitation = { invitation_id: string; conversation_id: string; group_title: string; group_description: string; inviter_id: string; inviter_username: string; inviter_display_name: string; invitee_id: string; invitee_username: string; invitee_display_name: string; direction: "incoming" | "outgoing"; created_at: string };
@@ -43,11 +44,13 @@ const tabs: { id: Tab; label: string }[] = [
 export default function CommunityClient({ userId }: { userId: string }) {
   const [tab, setTab] = useState<Tab>("discover");
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [discoverable, setDiscoverable] = useState(false);
   const [showOnline, setShowOnline] = useState(false);
   const [showLastSeen, setShowLastSeen] = useState(false);
+  const [allowFriendRequests, setAllowFriendRequests] = useState(true);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchUser[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -69,33 +72,49 @@ export default function CommunityClient({ userId }: { userId: string }) {
 
   const refresh = useCallback(async () => {
     setError("");
-    const [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult, invitationsResult] = await Promise.all([
+    const [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult, invitationsResult, friendAvatarPathsResult] = await Promise.all([
       supabase.rpc("chat_get_my_profile"),
       supabase.rpc("chat_list_friends"),
       supabase.rpc("chat_list_friend_requests"),
       supabase.rpc("chat_list_blocked_users"),
       supabase.rpc("chat_list_friend_presence"),
-      supabase.from("chat_conversations").select("id,title,description,avatar_url,closed_at,created_at").eq("kind", "group").order("created_at", { ascending: false }),
-      supabase.rpc("chat_list_group_invitations")
+      supabase.from("chat_conversations").select("id,title,description,avatar_path,avatar_url,closed_at,created_at").eq("kind", "group").order("created_at", { ascending: false }),
+      supabase.rpc("chat_list_group_invitations"),
+      supabase.rpc("chat_list_friend_avatar_paths")
     ]);
-    const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult, invitationsResult].find((item) => item.error);
+    const failed = [profileResult, friendsResult, requestsResult, blockedResult, presenceResult, groupsResult, invitationsResult, friendAvatarPathsResult].find((item) => item.error);
     if (failed?.error) throw failed.error;
 
     const ownProfile = (profileResult.data ?? null) as Profile | null;
     setProfile(ownProfile);
+    if (ownProfile?.avatar_path?.startsWith(`profiles/${userId}/`)) {
+      const { data: avatarData, error: avatarError } = await supabase.storage.from("vendrith-chat-avatars").createSignedUrl(ownProfile.avatar_path, 3600);
+      setProfileAvatarUrl(avatarError ? null : avatarData.signedUrl);
+    } else {
+      setProfileAvatarUrl(null);
+    }
     if (ownProfile) {
       setUsername(ownProfile.username ?? "");
       setDisplayName(ownProfile.display_name ?? "");
       setDiscoverable(Boolean(ownProfile.discoverable));
       setShowOnline(Boolean(ownProfile.show_online_status));
       setShowLastSeen(Boolean(ownProfile.show_last_seen));
+      setAllowFriendRequests(ownProfile.allow_friend_requests !== false);
     }
-    setFriends((friendsResult.data ?? []) as Friend[]);
+    const friendRows = (friendsResult.data ?? []) as Friend[];
+    const friendAvatarPaths = new Map(((friendAvatarPathsResult.data ?? []) as { friend_user_id: string; avatar_path: string }[]).map((item) => [item.friend_user_id, item.avatar_path]));
+    const friendsWithAvatars = await Promise.all(friendRows.map(async (friend) => {
+      const avatarPath = friendAvatarPaths.get(friend.friend_user_id);
+      if (!avatarPath || !avatarPath.startsWith(`profiles/${friend.friend_user_id}/`)) return { ...friend, avatar_display_url: null };
+      const { data: avatarData, error: avatarError } = await supabase.storage.from("vendrith-chat-avatars").createSignedUrl(avatarPath, 3600);
+      return { ...friend, avatar_display_url: avatarError ? null : avatarData.signedUrl };
+    }));
+    setFriends(friendsWithAvatars);
     setRequests((requestsResult.data ?? []) as FriendRequest[]);
     setBlocked((blockedResult.data ?? []) as BlockedUser[]);
     setPresence((presenceResult.data ?? []) as Presence[]);
     setGroupInvitations((invitationsResult.data ?? []) as GroupInvitation[]);
-    const groupRows = (groupsResult.data ?? []) as { id: string; title: string; description: string; avatar_url: string | null; closed_at: string | null; created_at: string }[];
+    const groupRows = (groupsResult.data ?? []) as { id: string; title: string; description: string; avatar_path: string | null; avatar_url: string | null; closed_at: string | null; created_at: string }[];
     const expandedGroups = await Promise.all(groupRows.map(async (group) => {
       const [membersResult, profilesResult] = await Promise.all([
         supabase.from("chat_members").select("user_id,role").eq("conversation_id", group.id),
@@ -109,11 +128,19 @@ export default function CommunityClient({ userId }: { userId: string }) {
         username: profiles.get(member.user_id)?.username ?? "player",
         display_name: profiles.get(member.user_id)?.display_name ?? "Vendrith player"
       }));
-      return { ...group, title: group.title || "Untitled group", description: group.description || "", members };
+      let avatarDisplayUrl: string | null = null;
+      const privateAvatarPath = group.avatar_path ?? (group.avatar_url?.startsWith(`groups/${group.id}/`) ? group.avatar_url : null);
+      if (privateAvatarPath) {
+        const { data: avatarData, error: avatarError } = await supabase.storage.from("vendrith-chat-avatars").createSignedUrl(privateAvatarPath, 3600);
+        avatarDisplayUrl = avatarError ? null : avatarData.signedUrl;
+      } else if (group.avatar_url?.startsWith("https://")) {
+        avatarDisplayUrl = group.avatar_url;
+      }
+      return { ...group, title: group.title || "Untitled group", description: group.description || "", avatar_display_url: avatarDisplayUrl, members };
     }));
     setGroups(expandedGroups);
     setNotice("Community data is up to date.");
-  }, [supabase]);
+  }, [supabase, userId]);
 
   useEffect(() => {
     const requestedTab = new URLSearchParams(window.location.search).get("tab");
@@ -202,6 +229,8 @@ export default function CommunityClient({ userId }: { userId: string }) {
         p_show_last_seen: showLastSeen
       });
       if (privacyError) throw privacyError;
+      const { error: requestPrivacyError } = await supabase.rpc("chat_set_friend_request_privacy", { p_allow: allowFriendRequests });
+      if (requestPrivacyError) throw requestPrivacyError;
     }, "Your Vendrith Chat profile and privacy settings were saved.");
   }
 
@@ -291,6 +320,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
       setError("Choose a JPEG, PNG, or WebP image up to 5 MB.");
       return;
     }
+    let cleanupPending = false;
     await perform(`group-avatar:${group.id}`, async () => {
       const path = `groups/${group.id}/${userId}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage.from("vendrith-chat-avatars")
@@ -301,7 +331,13 @@ export default function CommunityClient({ userId }: { userId: string }) {
         p_description: group.description, p_avatar_url: path
       });
       if (metadataError) throw metadataError;
+      const previousAvatarPath = group.avatar_path ?? (group.avatar_url?.startsWith(`groups/${group.id}/`) ? group.avatar_url : null);
+      if (previousAvatarPath && previousAvatarPath !== path) {
+        const { error: cleanupError } = await supabase.storage.from("vendrith-chat-avatars").remove([previousAvatarPath]);
+        if (cleanupError) cleanupPending = true;
+      }
     }, "Group avatar updated.");
+    if (cleanupPending) setNotice("Group avatar updated; previous image cleanup needs review.");
   }
 
   async function editGroupMetadata(group: GroupConversation) {
@@ -312,7 +348,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
     await perform(`group-metadata:${group.id}`, async () => {
       const { error: rpcError } = await supabase.rpc("chat_update_group_metadata", {
         p_conversation_id: group.id, p_title: nextTitle.trim(),
-        p_description: nextDescription.trim(), p_avatar_url: group.avatar_url
+        p_description: nextDescription.trim(), p_avatar_url: group.avatar_path ?? group.avatar_url
       });
       if (rpcError) throw rpcError;
     }, "Group details updated.");
@@ -364,6 +400,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
       setError("Choose a JPEG, PNG, or WebP image up to 5 MB.");
       return;
     }
+    let cleanupPending = false;
     await perform("avatar", async () => {
       const path = `profiles/${userId}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage.from("vendrith-chat-avatars")
@@ -371,7 +408,13 @@ export default function CommunityClient({ userId }: { userId: string }) {
       if (uploadError) throw uploadError;
       const { error: profileError } = await supabase.rpc("chat_set_profile_avatar", { p_avatar_path: path });
       if (profileError) throw profileError;
+      const previousPath = profile?.avatar_path;
+      if (previousPath && previousPath !== path && previousPath.startsWith(`profiles/${userId}/`)) {
+        const { error: cleanupError } = await supabase.storage.from("vendrith-chat-avatars").remove([previousPath]);
+        if (cleanupError) cleanupPending = true;
+      }
     }, "Profile avatar updated.");
+    if (cleanupPending) setNotice("Profile avatar updated; previous image cleanup needs review.");
   }
 
   async function addGroupMember(groupId: string) {
@@ -453,7 +496,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
               {friends.map((friend) => {
                 const status = presenceByUser.get(friend.friend_user_id);
                 return <article className="community-person" key={friend.friend_user_id}>
-                  <div className="community-avatar">{friend.display_name.slice(0, 1).toUpperCase()}</div>
+                  {friend.avatar_display_url ? <img className="community-person-avatar" src={friend.avatar_display_url} alt={`${friend.display_name} avatar`} /> : <div className="community-avatar">{friend.display_name.slice(0, 1).toUpperCase()}</div>}
                   <div className="community-person-copy"><strong>{friend.display_name}</strong><span>@{friend.username} · <i className={status?.is_online ? "presence-online" : "presence-offline"} /> {status?.is_online ? "Online" : "Offline"}</span></div>
                   <div className="community-person-actions">
                     <button type="button" onClick={() => void startConversation(friend.friend_user_id)} disabled={Boolean(busy)}>Message</button>
@@ -537,7 +580,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
                 const canManage = myRole === "owner" || myRole === "admin";
                 const canModerate = canManage || myRole === "moderator";
                 return <article className="community-group-card" key={group.id}>
-                  <div className="community-group-heading"><div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}{group.closed_at ? " · Closed" : ""}</span>{group.description && <p>{group.description}</p>}</div><div>{(myRole === "owner" || myRole === "admin") && !group.closed_at && <button className="community-subtle-button" type="button" onClick={() => void editGroupMetadata(group)} disabled={Boolean(busy)}>Edit details</button>}{(myRole === "owner" || myRole === "admin") && !group.closed_at && <label className="community-subtle-button">Upload group avatar<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadGroupAvatar(group, file); event.currentTarget.value = ""; }} /></label>}{myRole === "owner" && !group.closed_at && <button className="community-danger-button" type="button" onClick={() => { if (window.confirm("Close this group for everyone? Members will keep read access, but new messages will be blocked.")) void perform(`close-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_close_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "Group closed. Members retain read access."); }} disabled={Boolean(busy)}>Close group</button>}<button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div></div>
+                  <div className="community-group-heading">{group.avatar_display_url ? <img className="community-group-avatar" src={group.avatar_display_url} alt={`${group.title} avatar`} /> : <div className="community-avatar community-group-avatar-fallback" aria-hidden="true">{group.title.slice(0, 1).toUpperCase()}</div>}<div><strong>{group.title}</strong><span>{group.members.length} members · Your role: {myRole}{group.closed_at ? " · Closed" : ""}</span>{group.description && <p>{group.description}</p>}</div><div>{(myRole === "owner" || myRole === "admin") && !group.closed_at && <button className="community-subtle-button" type="button" onClick={() => void editGroupMetadata(group)} disabled={Boolean(busy)}>Edit details</button>}{(myRole === "owner" || myRole === "admin") && !group.closed_at && <label className="community-subtle-button">Upload group avatar<input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadGroupAvatar(group, file); event.currentTarget.value = ""; }} /></label>}{myRole === "owner" && !group.closed_at && <button className="community-danger-button" type="button" onClick={() => { if (window.confirm("Close this group for everyone? Members will keep read access, but new messages will be blocked.")) void perform(`close-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_close_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "Group closed. Members retain read access."); }} disabled={Boolean(busy)}>Close group</button>}<button className="community-subtle-button" type="button" onClick={() => void perform(`leave-group:${group.id}`, async () => { const { error: rpcError } = await supabase.rpc("chat_leave_group", { p_conversation_id: group.id }); if (rpcError) throw rpcError; }, "You left the group.")} disabled={Boolean(busy)}>Leave group</button></div></div>
                   {group.members.map((member) => <div className="community-group-member" key={member.user_id}>
                     <span>{member.display_name} <small>@{member.username}</small></span>
                     <strong>{member.role}</strong>
@@ -578,6 +621,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
           <>
             <div className="community-section-title"><div><h2>Your community profile</h2><p>This profile is separate from your sign-in email and is used for player discovery.</p></div></div>
             <div className="community-profile-form">
+              {profileAvatarUrl && <img className="community-profile-avatar" src={profileAvatarUrl} alt="Your profile avatar" />}
               <label>Profile avatar<input aria-label="Upload profile avatar" type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadProfileAvatar(file); event.currentTarget.value = ""; }} /></label>
               <small>Private avatar storage · JPEG, PNG, or WebP · maximum 5 MB. Only your account and accepted friends can read it.</small>
             </div>
@@ -587,6 +631,7 @@ export default function CommunityClient({ userId }: { userId: string }) {
               <label className="community-toggle"><input type="checkbox" checked={discoverable} onChange={(event) => setDiscoverable(event.target.checked)} /> Allow other players to find me</label>
               <label className="community-toggle"><input type="checkbox" checked={showOnline} onChange={(event) => setShowOnline(event.target.checked)} /> Show my online status to friends</label>
               <label className="community-toggle"><input type="checkbox" checked={showLastSeen} onChange={(event) => setShowLastSeen(event.target.checked)} /> Show my last seen time to friends</label>
+              <label className="community-toggle"><input type="checkbox" checked={allowFriendRequests} onChange={(event) => setAllowFriendRequests(event.target.checked)} /> Allow friend requests</label>
               <button type="submit" disabled={Boolean(busy) || !username.trim() || !displayName.trim()}>{busy === "profile" ? "Saving…" : profile ? "Save profile" : "Create profile"}</button>
             </form>
             <p className="community-profile-note">Your account identity is still the verified Supabase Auth UUID. Your username and display name are presentation fields only.</p>

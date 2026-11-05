@@ -197,3 +197,18 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Tracked the currently deployed Non-Production Edge Function sources for `delete-chat-account`, `export-chat-account`, and `process-chat-account-deletions` in `supabase/functions/`.
 - [x] Confirmed the worker is active in Non-Production and its GitHub Actions workflow is configured for a 15-minute schedule. No deletion job was manually triggered during this implementation.
 - [ ] No QA/E2E/manual verification was run; these are implementation changes only. Production remains untouched.
+
+### Integration assembly update — 2026-11-06
+
+- [x] Created isolated integration worktree from `origin/main`; merged the migration recovery and account-data-controls branches without merge conflicts.
+- [x] Carried the separately audited worktree delta into the integration tree, preserving the shared lifecycle auth-time helper, reauthentication UX, avatar-path handling, and service-role grant migration.
+- [ ] Final assembled-tree validation and diff review remain required before any commit, PR, push, deployment, or hosted Non-Production operation.
+
+### Integration verification update — 2026-11-06
+- [x] Assembled the recovered migration branch and Non-Production account-data-controls branch in isolated local branch `integration/reconcile-2026-11-06`; carried audited worktree changes without changing the original audit worktree.
+- [x] Replayed all 43 migration files from an empty, disposable local Supabase database against the assembled integration tree; 43 migration ledger rows confirmed.
+- [x] Verified all 18 public tables in the disposable catalog have RLS enabled; unauthenticated lifecycle Edge Function requests are rejected.
+- [x] Revalidated 35/35 Node tests, TypeScript typecheck, production build, Deno check/lint/format, and `git diff --check`.
+- [x] Local Phase 9 unauthenticated redirect browser test passed 1/1 against the assembled integration tree.
+- [x] Authenticated Phase 9 account lifecycle browser test passed 2/2: disposable signup, export download, deletion request, and worker cleanup. Final local catalog confirmed zero remaining Auth users and no queued/failed deletion jobs.
+- [ ] Final diff review, commit, PR, and main-branch integration remain pending explicit user direction. Hosted Non-Production and Production databases remain out of scope for this local rehearsal.

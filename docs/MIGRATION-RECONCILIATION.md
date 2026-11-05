@@ -163,3 +163,7 @@ A second read-only catalog pass extracted current constraints and trigger defini
 - The query returned no Chat-named publication table rows for the publication filter used; this is not enough to conclude the social Realtime migration has no publication entries. Publication membership needs a separate exact query against `pg_publication_tables` and `pg_publication`.
 
 This second pass improves the reconstruction evidence but still does not establish the exact historical migration bodies or fully cover all grants, policies, and function definitions.
+
+## Integration worktree assembly — 2026-11-06
+
+The migration recovery and account-data-controls remote lines were merged into the isolated `integration/reconcile-2026-11-06` worktree. The 43-file clean-database replay and focused security/browser checks are recorded in `docs/INTEGRATION-PLAN-2026-11-06.md`. This is an integration assembly only; no hosted database migration was run.

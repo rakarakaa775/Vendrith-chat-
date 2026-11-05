@@ -36,3 +36,8 @@ These indexes may be unused because the Non-Production dataset and traffic are s
 - The session-list SECURITY DEFINER warning remains a Phase 8 hardening item.
 - The migration-source reconciliation remains a prerequisite for safe, reproducible schema changes.
 - This advisor snapshot is not a substitute for cross-user authorization tests or a release security review.
+
+
+## Follow-up remediation — 2026-11-04
+
+The public `public.chat_list_my_sessions()` function was replaced with a `SECURITY INVOKER` wrapper. Its privileged `auth.sessions` query now lives in `chat_private.chat_list_my_sessions()` with the same `auth.uid()` ownership filter and expired-session exclusion. The forward migration `20261104101500_chat_private_session_list_rpc_hardening_v1` was applied only to Non-Production. A post-change catalog query confirmed the public wrapper has `prosecdef=false`, anonymous execution is false, and authenticated execution is true. The private helper remains `SECURITY DEFINER`, actor-scoped, and executable only by authenticated callers; the schema is not exposed through the public REST API.
