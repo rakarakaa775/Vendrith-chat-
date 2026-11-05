@@ -51,7 +51,7 @@ A previous repository branch, `feat/chat-engine-server-ui`, contains source SQL 
 - `20261103051345_group_reporting_moderation_v1.sql`
 - `20261103051548_group_report_resolution_validation_v1.sql`
 
-A fresh migration-history read confirms 20 Chat-specific migration versions are missing from `main`; nine source files have been recovered, leaving 11 outstanding.
+A fresh migration-history read confirms 20 Chat-specific migration versions are missing from `main`. Eighteen source files have now been recovered into this branch; two versions remain unresolved.
 
 ## Catalog evidence collected (read-only)
 
@@ -68,21 +68,32 @@ Targeted catalog queries against Non-Production confirmed the current state incl
 
 This is evidence of the current live schema, **not proof of the exact historical SQL body** of each migration. Some catalog output was intentionally narrowed after the initial broad query exceeded response limits. The catalog extraction is therefore partial, not yet a complete reconstruction package.
 
-## Outstanding 11 migrations
+## Additional nine historical sources recovered from local Git history
 
-The following still need source recovery or full catalog-level reconstruction:
+Desktop Commander inspected the separate Codespaces worktrees and located the original blobs for these nine migrations in the local Git object database. For every file, `git hash-object <file>` matched `git rev-parse <source-commit>:<path>` exactly. The unchanged files were copied into this branch:
 
-1. `20261103154849_chat_pinned_messages_v1`
-2. `20261103155201_chat_attachment_rpc_security_hardening_v1`
-3. `20261103162626_chat_deleted_account_identity_v1`
-4. `20261103162636_chat_account_deletion_workflow_v1`
-5. `20261103162909_chat_preserve_shared_history_on_account_delete_v1`
-6. `20261103175205_chat_list_my_sessions_v1`
-7. `20261103183150_phase5_realtime_social_events`
-8. `20261103184107_phase6_group_invites_and_avatars`
-9. `20261103190412_phase8_chat_fk_indexes`
-10. `20261104071443_chat_private_session_list_rpc_hardening_v1`
-11. `20261104151218_chat_deletion_export_operations_v1`
+| Migration file | Source commit (short) | Verification |
+| --- | --- | --- |
+| `20261103154849_chat_pinned_messages_v1.sql` | `9946111` | Blob hash exact match |
+| `20261103155201_chat_attachment_rpc_security_hardening_v1.sql` | `39de207` | Blob hash exact match |
+| `20261103162626_chat_deleted_account_identity_v1.sql` | `89f5f25` | Blob hash exact match |
+| `20261103162636_chat_account_deletion_workflow_v1.sql` | `89f5f25` | Blob hash exact match |
+| `20261103162909_chat_preserve_shared_history_on_account_delete_v1.sql` | `89f5f25` | Blob hash exact match |
+| `20261103175205_chat_list_my_sessions_v1.sql` | `1e5975e` | Blob hash exact match |
+| `20261103183150_phase5_realtime_social_events.sql` | `990cc54` | Blob hash exact match |
+| `20261103184107_phase6_group_invites_and_avatars.sql` | `4a4633f` | Blob hash exact match |
+| `20261103190412_phase8_chat_fk_indexes.sql` | `cd48623` | Blob hash exact match |
+
+These nine are historical source recovery, not catalog reconstruction. Their source commit provenance and exact blob hashes were checked using Desktop Commander on the connected Codespaces device.
+
+## Outstanding two migrations
+
+Only these two Chat migration versions remain without an authoritative source file in this reconciliation branch:
+
+1. `20261104071443_chat_private_session_list_rpc_hardening_v1`
+2. `20261104151218_chat_deletion_export_operations_v1`
+
+A local untracked candidate named `20261104100000_chat_deletion_export_operations_v1.sql` exists in the separate audit worktree, but it has neither Git-history provenance nor the exact version prefix recorded in Supabase (`20261104151218`). It is deliberately **not** promoted or renamed as the historical migration. It may be used only as a review lead when reconstructing the live schema, never as proof of the original migration body.
 
 ## Required reconciliation procedure
 
@@ -97,9 +108,9 @@ The following still need source recovery or full catalog-level reconstruction:
 
 ## Current status
 
-**Blocked — partial catalog evidence; 11 source files outstanding.**
+**In progress — 18/20 source files recovered; 2 remain.**
 
-The migration history proves these versions were recorded in Non-Production, but migration history does not contain the original SQL bodies. Nine historical source files are recovered. Catalog queries confirm several live objects relevant to the remaining migrations, but the definitions, policies, triggers, grants, publication memberships, and FK/index inventory have not yet been extracted comprehensively enough to author safe reconstructed migration files.
+The migration history proves these versions were recorded in Non-Production, but migration history does not contain the original SQL bodies. Eighteen files now have historical source provenance and exact blob-hash matches. The two remaining versions require authoritative source recovery or carefully labeled catalog reconstruction. Catalog evidence is still incomplete for the session-list hardening and deletion/export operations, so no reconstructed SQL is being passed off as historical source.
 
 No existing Non-Production migration was reapplied. Production was not changed. No clean-database rehearsal or Chat QA/E2E was run.
 
