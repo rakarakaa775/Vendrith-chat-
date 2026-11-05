@@ -86,14 +86,30 @@ Desktop Commander inspected the separate Codespaces worktrees and located the or
 
 These nine are historical source recovery, not catalog reconstruction. Their source commit provenance and exact blob hashes were checked using Desktop Commander on the connected Codespaces device.
 
-## Outstanding two migrations
+## Two catalog-reconstructed migration sources
 
-Only these two Chat migration versions remain without an authoritative source file in this reconciliation branch:
+The remaining two source files have been reconstructed from the current Non-Production PostgreSQL catalog and added under the exact version identifiers recorded by Supabase. They are explicitly labeled as reconstructed; neither is represented as the original historical SQL body.
 
-1. `20261104071443_chat_private_session_list_rpc_hardening_v1`
-2. `20261104151218_chat_deletion_export_operations_v1`
+### `20261104071443_chat_private_session_list_rpc_hardening_v1.sql`
 
-A local untracked candidate named `20261104100000_chat_deletion_export_operations_v1.sql` exists in the separate audit worktree, but it has neither Git-history provenance nor the exact version prefix recorded in Supabase (`20261104151218`). It is deliberately **not** promoted or renamed as the historical migration. It may be used only as a review lead when reconstructing the live schema, never as proof of the original migration body.
+The current catalog matches the reconstructed implementation:
+
+- `chat_private.chat_list_my_sessions()` is a stable SECURITY DEFINER function with an empty search path, restricted to the caller's `auth.uid()`, and excludes expired sessions.
+- `public.chat_list_my_sessions()` is a SECURITY INVOKER wrapper over the private function.
+- Current privileges show authenticated execution, no anon execution, authenticated schema usage, and no service-role execution on the private function. The public wrapper is executable by authenticated and service_role.
+- Both current function definitions and the relevant ACL/privilege checks were inspected read-only.
+
+### `20261104151218_chat_deletion_export_operations_v1.sql`
+
+The reconstructed migration was compared with the current live definitions:
+
+- `chat_account_deletion_jobs` has the queued default, retry/lock columns, constrained status values, non-negative attempts, user-id primary key, and partial claim index for queued/failed work.
+- `chat_data_export_events` has the expected UUID, user, timestamp, and JSON row-count fields; RLS is enabled, there are no user-facing policies, and table privileges are limited to service_role (apart from owner privileges).
+- The export audit index, queue claim index, constraints, and table columns were read from PostgreSQL catalogs.
+- Function definitions for `chat_private.chat_deletion_world_reference_tables(uuid)`, `chat_private.claim_chat_account_deletion_jobs(integer)`, `public.chat_deletion_world_reference_tables(uuid)`, `public.chat_claim_account_deletion_jobs(integer)`, `public.chat_claim_data_export_slot(uuid)`, and `chat_private.is_member(uuid)` match the reconstructed source. The latter denies membership to tombstoned identities.
+- Function execute privileges and schema usage were inspected read-only.
+
+A local untracked draft named `20261104100000_chat_deletion_export_operations_v1.sql` had no Git-history provenance and did not use the exact version recorded in Supabase. It was not copied under that name or claimed as historical source. Its contents were used only as a review lead; the committed `20261104151218` file has an explicit catalog-reconstruction header.
 
 ## Required reconciliation procedure
 
@@ -108,11 +124,11 @@ A local untracked candidate named `20261104100000_chat_deletion_export_operation
 
 ## Current status
 
-**In progress — 18/20 source files recovered; 2 remain.**
+**Source inventory complete — 20/20 files present; 18 historical and 2 catalog-reconstructed.**
 
-The migration history proves these versions were recorded in Non-Production, but migration history does not contain the original SQL bodies. Eighteen files now have historical source provenance and exact blob-hash matches. The two remaining versions require authoritative source recovery or carefully labeled catalog reconstruction. Catalog evidence is still incomplete for the session-list hardening and deletion/export operations, so no reconstructed SQL is being passed off as historical source.
+All 20 migration versions recorded in Non-Production now have corresponding files in this branch. The 18 historical files were verified against their source Git blobs by exact hash comparison. The remaining two files are catalog reconstructions and are labeled as such. A PostgreSQL SQL parser successfully parsed all 42 migration files in the branch; this checks top-level SQL syntax but does not compile PL/pgSQL function bodies. No disposable database replay has been performed, so migration reproducibility is not yet proven.
 
-No existing Non-Production migration was reapplied. Production was not changed. No clean-database rehearsal or Chat QA/E2E was run.
+No existing Non-Production migration was reapplied. Production was not changed. No clean-database rehearsal or Chat QA/E2E was run; QA/E2E remains deferred until Phase 9.
 
 
 ### Additional catalog pass — constraints, triggers, and indexes
