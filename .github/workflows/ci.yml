@@ -13,6 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,19 +28,36 @@ jobs:
         run: npm audit --audit-level=low
       - name: Type check
         run: npm run typecheck
+      - name: Set up Deno for Supabase Edge Functions
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type check Supabase Edge Functions
+        run: |
+          deno check supabase/functions/delete-chat-account/index.ts
+          deno check supabase/functions/process-chat-account-deletions/index.ts
+          deno check supabase/functions/export-chat-account/index.ts
       - name: Unit tests
         run: npm test
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser interaction tests
-        run: npm run test:e2e
+      - name: Browser interaction tests (isolated local preview)
         env:
-          # GitHub Actions secrets are separate from Codespaces secrets.
-          # Keep this restricted to the explicitly approved Non-Production Supabase project.
+          # Keep the preview suite independent from hosted Auth secrets. These tests
+          # intentionally exercise the local-only mock UI and must never touch hosted data.
+          NEXT_PUBLIC_SUPABASE_URL: ''
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ''
+          NEXT_PUBLIC_ALLOW_LOCAL_SUPABASE_E2E: '0'
+          E2E_SUPABASE_AUTH: '0'
+          E2E_LOCAL_SUPABASE: '0'
+        run: npm run test:e2e
+      - name: Authenticated Non-Production browser tests
+        env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           E2E_ACCOUNT_1_EMAIL: ${{ secrets.E2E_ACCOUNT_1_EMAIL }}
           E2E_ACCOUNT_1_PASSWORD: ${{ secrets.E2E_ACCOUNT_1_PASSWORD }}
-          E2E_SUPABASE_AUTH: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY != '' && '1' || '0' }}
+          E2E_SUPABASE_AUTH: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY != '' && secrets.E2E_ACCOUNT_1_EMAIL != '' && secrets.E2E_ACCOUNT_1_PASSWORD != '' && '1' || '0' }}
+        run: npx playwright test e2e/auth.spec.ts
       - name: Production build
         run: npm run build

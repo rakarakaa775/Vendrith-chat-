@@ -27,7 +27,7 @@
 - Local preview remains available without backend configuration; authenticated main route uses the server-backed chat component.
 
 ### Remaining product capabilities
-- Group avatar display/cleanup, account deletion UX, and a user-facing data export flow.
+- Group avatar display/cleanup remains open. Account deletion UX and the user-facing data export flow are implemented on the current feature branch; final validation is deferred.
 - Friend-request preference controls and a shared app-wide presence/reconnect lifecycle.
 - External push evaluation; external push remains deferred pending privacy/cost approval.
 - Broader accessibility/localization, retention automation, observability, migration-source reconciliation, and production integration package.
@@ -114,9 +114,9 @@
 **Status:** Security hardening and operational documentation have progressed. Retention policy approval, export/cleanup implementation, centralized observability, rehearsed recovery, migration-source reconciliation, and production integration approval remain. No production connection is permitted during this pass.
 - [ ] Consolidated authorization model and least-privilege database grants; advisor snapshot found a public-schema `SECURITY DEFINER` session-list RPC that is authenticated-only and actor-scoped but should be moved behind a private-schema implementation.
 - [x] Abuse prevention, verified-UUID rate limits, reporting, moderation RPCs, and append-only moderation event storage exist in Non-Production.\n- [ ] Approve and enforce retention periods for moderation/audit records.
-- [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has tombstone/shared-history structures.\n- [ ] Account-deletion job processor/request path was not found in the catalog and still needs implementation; export endpoint/UX and cleanup remain open.
+- [x] Data lifecycle, retention, export, and deletion requirements documented; Non-Production schema has tombstone/shared-history structures.\n- [x] Account-deletion request endpoint, queued job processor, 15-minute GitHub Actions schedule, immediate Chat access revocation, cross-product identity guard, group-owner guard, retry scheduling, and JSON export endpoint/UX are implemented for Non-Production. Deployed Edge Function sources are now tracked under `supabase/functions/`; final acceptance is deferred.
 - [x] Backup/restore and incident-response runbook documented.
-- [ ] Retention windows require product approval; export endpoint/UX, scheduled cleanup, and a rehearsed restore remain open.
+- [ ] Retention windows require product approval; scheduled retention cleanup and a rehearsed restore remain open.
 - [x] Privacy-safe route error boundary logs only a non-content digest; incident response and log privacy guidance documented.
 - [ ] Centralized structured telemetry, alerting, dashboards, and provider-backed error reporting remain open.
 - [x] Cursor-based 50-message history pagination; [ ] large-group pagination and broader performance tuning.
@@ -189,3 +189,26 @@ Only after Phases 1–8 implementation work is complete:
 - [x] Added `/settings/account` with password update, current session expiry display, and sign-out-other-sessions action.
 
 - [x] Restored the original 30/minute and 500/hour message-send rate limits after adding group-close enforcement; idempotent retries return the original message without consuming another send quota.
+
+
+### Implementation update — 2026-11-04 (account lifecycle)
+- [x] Added account settings controls to download a private JSON export of Chat-owned data and request permanent Chat account deletion.
+- [x] The client requires the exact deletion confirmation phrase and presents the shared-history, World of Vendrith identity, and group-ownership boundaries before submitting.
+- [x] Tracked the currently deployed Non-Production Edge Function sources for `delete-chat-account`, `export-chat-account`, and `process-chat-account-deletions` in `supabase/functions/`.
+- [x] Confirmed the worker is active in Non-Production and its GitHub Actions workflow is configured for a 15-minute schedule. No deletion job was manually triggered during this implementation.
+- [ ] No QA/E2E/manual verification was run; these are implementation changes only. Production remains untouched.
+
+### Integration assembly update — 2026-11-06
+
+- [x] Created isolated integration worktree from `origin/main`; merged the migration recovery and account-data-controls branches without merge conflicts.
+- [x] Carried the separately audited worktree delta into the integration tree, preserving the shared lifecycle auth-time helper, reauthentication UX, avatar-path handling, and service-role grant migration.
+- [ ] Final assembled-tree validation and diff review remain required before any commit, PR, push, deployment, or hosted Non-Production operation.
+
+### Integration verification update — 2026-11-06
+- [x] Assembled the recovered migration branch and Non-Production account-data-controls branch in isolated local branch `integration/reconcile-2026-11-06`; carried audited worktree changes without changing the original audit worktree.
+- [x] Replayed all 43 migration files from an empty, disposable local Supabase database against the assembled integration tree; 43 migration ledger rows confirmed.
+- [x] Verified all 18 public tables in the disposable catalog have RLS enabled; unauthenticated lifecycle Edge Function requests are rejected.
+- [x] Revalidated 35/35 Node tests, TypeScript typecheck, production build, Deno check/lint/format, and `git diff --check`.
+- [x] Local Phase 9 unauthenticated redirect browser test passed 1/1 against the assembled integration tree.
+- [x] Authenticated Phase 9 account lifecycle browser test passed 2/2: disposable signup, export download, deletion request, and worker cleanup. Final local catalog confirmed zero remaining Auth users and no queued/failed deletion jobs.
+- [ ] Final diff review, commit, PR, and main-branch integration remain pending explicit user direction. Hosted Non-Production and Production databases remain out of scope for this local rehearsal.

@@ -167,6 +167,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
         .from("chat_attachments")
         .select("id,conversation_id,uploader_id,object_path,original_name,mime_type,byte_size,created_at")
         .eq("conversation_id", activeId)
+        .eq("status", "ready")
         .order("created_at", { ascending: true });
       if (cancelled) return;
       if (attachmentError) setError(attachmentError.message);
@@ -203,7 +204,7 @@ export default function ServerChat({ userId, email }: { userId: string; email?: 
       if (confirmed !== true) throw new Error("The server could not confirm the uploaded file.");
       const { data, error: listError } = await supabase.from("chat_attachments")
         .select("id,conversation_id,uploader_id,object_path,original_name,mime_type,byte_size,created_at")
-        .eq("conversation_id", active.id).order("created_at", { ascending: true });
+        .eq("conversation_id", active.id).eq("status", "ready").order("created_at", { ascending: true });
       if (listError) throw listError;
       setAttachments((data ?? []) as Attachment[]);
       setStatus("Private attachment uploaded and authorized for conversation members.");
