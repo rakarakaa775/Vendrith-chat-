@@ -119,9 +119,11 @@ export default function AccountSettingsClient() {
     if (!window.confirm("This will hide your Chat identity immediately, revoke conversation access, and queue deletion of your Chat Auth account. Shared messages remain as Deleted account. Continue?")) return;
     setDeleting(true); setDangerError(""); setPrivacyNotice("");
     try {
-      await reauthenticate(deletePassword);
+      const freshSession = await reauthenticate(deletePassword);
+      if (!freshSession?.access_token) throw new Error("Password was verified, but a fresh authorization session was not returned. Please sign in again.");
       const { data, error: invokeError } = await supabase.functions.invoke("delete-chat-account", {
         body: { confirmation: DELETE_CONFIRMATION },
+        headers: { Authorization: `Bearer ${freshSession.access_token}` },
       });
       if (invokeError) throw new Error(invokeError.message || "Account deletion request could not be submitted.");
       if (data?.status !== "queued" && data?.status !== "completed") throw new Error("The deletion service returned an unexpected status.");
