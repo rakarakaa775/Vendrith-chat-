@@ -15,6 +15,7 @@ export default function AccountSettingsClient() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [reauthPassword, setReauthPassword] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -69,9 +70,9 @@ export default function AccountSettingsClient() {
     finally { setBusy(false); }
   }
 
-  async function reauthenticate() {
-    if (!email || !reauthPassword) throw new Error("Enter your current password to continue.");
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password: reauthPassword });
+  async function reauthenticate(password = reauthPassword) {
+    if (!email || !password) throw new Error("Enter your current password to continue.");
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError || !data.user || data.user.id !== accountId) throw new Error("Password verification failed for this account.");
     return data.session;
   }
@@ -118,7 +119,7 @@ export default function AccountSettingsClient() {
     if (!window.confirm("This will hide your Chat identity immediately, revoke conversation access, and queue deletion of your Chat Auth account. Shared messages remain as Deleted account. Continue?")) return;
     setDeleting(true); setDangerError(""); setPrivacyNotice("");
     try {
-      await reauthenticate();
+      await reauthenticate(deletePassword);
       const { data, error: invokeError } = await supabase.functions.invoke("delete-chat-account", {
         body: { confirmation: DELETE_CONFIRMATION },
       });
@@ -159,8 +160,9 @@ export default function AccountSettingsClient() {
       <h2>Delete Vendrith Chat account</h2>
       <p>This action is irreversible for your Chat account. Your public profile will be hidden and your conversation access revoked. Shared message history is preserved and displayed as <strong>Deleted account</strong>.</p>
       <p className="community-profile-note">Deletion is blocked if this Auth identity still owns World of Vendrith records or owns a Chat group. Transfer group ownership first. The trusted worker removes Chat-owned private data and then deletes the Chat Auth user; backup copies follow the provider’s backup expiry schedule.</p>
+      <label>Password to authorize deletion<input type="password" autoComplete="current-password" value={deletePassword} onChange={(event) => setDeletePassword(event.target.value)} /></label>
       <label>Type <strong>{DELETE_CONFIRMATION}</strong> to confirm<input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} autoComplete="off" /></label>
-      <button type="button" className="community-danger-button" disabled={exporting || deleting || !reauthPassword || deleteConfirmation !== DELETE_CONFIRMATION} onClick={() => void requestAccountDeletion()}>{deleting ? "Submitting deletion request…" : "Request permanent deletion"}</button>
+      <button type="button" className="community-danger-button" disabled={exporting || deleting || !deletePassword || deleteConfirmation !== DELETE_CONFIRMATION} onClick={() => void requestAccountDeletion()}>{deleting ? "Submitting deletion request…" : "Request permanent deletion"}</button>
     </section>
     <footer className="community-status" role="status"><strong>{notice}</strong>{error && <p>{error}</p>}{privacyNotice && <p>{privacyNotice}</p>}{dangerError && <p role="alert">{dangerError}</p>}</footer>
   </main>;

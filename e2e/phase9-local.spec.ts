@@ -65,6 +65,10 @@ test("local Phase 9 export and deletion flow uses the app UI and a disposable ac
   await page.getByLabel("Type DELETE MY VENDRITH ACCOUNT to confirm").fill(
     "DELETE MY VENDRITH ACCOUNT",
   );
+  const deleteButton = page.getByRole("button", { name: "Request permanent deletion" });
+  await expect(deleteButton).toBeDisabled();
+  await page.getByLabel("Password to authorize deletion").fill(password!);
+  await expect(deleteButton).toBeEnabled();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Request permanent deletion" })
     .click();
