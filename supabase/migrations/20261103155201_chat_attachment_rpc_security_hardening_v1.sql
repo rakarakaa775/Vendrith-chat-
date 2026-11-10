@@ -23,7 +23,7 @@ begin
   end if;
 
   if v_name is null or char_length(v_name) < 1 or char_length(v_name) > 255
-     or v_name ~ '[[:cntrl:]]' or v_name ~ '[/\\\\]' then
+     or v_name ~ '[[:cntrl:]]' or v_name ~ '[/\\]' then
     raise exception 'Invalid file name' using errcode = '22023';
   end if;
 
