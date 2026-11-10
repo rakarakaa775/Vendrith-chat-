@@ -22,7 +22,7 @@ Beberapa usulan di sini bersinggungan dengan aturan kerja di `docs/ROADMAP.md` d
 
 - Vendrith chat akan menjadi bagian dari fitur game engine (pembuatan game). Penggunanya adalah pengembang yang berbicara dengan sesama pengembang.
 - Fitur **Status** menjadi pratinjau: pengembang mengirim status perkembangan game yang sedang mereka buat.
-- Titik awal: backend chat lengkap, tetapi Realtime baru aktif untuk pesan dan notifikasi, dan 18 migrasi chat di Non-Production belum ada di Git (lihat `docs/MIGRATION-RECONCILIATION.md`).
+- Titik awal: backend chat lengkap, tetapi Realtime baru aktif untuk pesan dan notifikasi, dan migrasi chat di Non-Production belum seluruhnya ada di `main` (PR #3 menunggu merge; lihat `docs/MIGRATION-RECONCILIATION.md`).
 
 ## 3. Prinsip kerja
 
@@ -44,7 +44,7 @@ Beberapa usulan di sini bersinggungan dengan aturan kerja di `docs/ROADMAP.md` d
 
 ## 5. Fase 0 - Fondasi dan perbaikan
 
-1. Rekonsiliasi migrasi: commit 18 migrasi chat yang hilang dari repo sesuai `docs/MIGRATION-RECONCILIATION.md`. Migrasi baru sebaiknya menunggu ini selesai.
+1. Selesaikan rekonsiliasi migrasi. Sebagian besar sudah dikerjakan di PR #3 (`integration/reconcile-2026-11-06`, 42 file). Tersisa: merge PR #3; samakan nomor versi `20261107013000` menjadi `20261106182923` sesuai catatan database; putuskan nasib `20261105153203` (grant `service_role`: efeknya sudah ada di database lewat default privileges, tetapi versinya tidak tercatat); tinjau perbedaan escape regex di `20261103155201`; lalu replay pada database sekali pakai dengan perbandingan katalog. Hasil audit ada di `docs/MIGRATION-HISTORY-VERIFICATION.md` (branch `chore/migration-history-verification`).
 2. Sinkronkan repo kerja: Codespace `main` tertinggal 173 commit dan punya 1 commit lokal (`2dd745b`) yang belum di-push. Putuskan simpan atau buang, lalu rapikan worktree.
 3. Perbaiki Realtime komunitas. Draf SQL ada di `docs/drafts/realtime-community.sql` dan baru diterapkan ke Non-Production setelah ditinjau.
 4. Hapus atau ganti pemanggilan `chat_add_group_member` di UI (hak EXECUTE-nya sudah dicabut dari role `authenticated`).
@@ -52,7 +52,7 @@ Beberapa usulan di sini bersinggungan dengan aturan kerja di `docs/ROADMAP.md` d
 6. Konfigurasi Auth Non-Production: wajib konfirmasi email, captcha, kata sandi minimal 8 karakter, perlindungan kata sandi bocor (cek paket), SMTP kustom, URL redirect `vendrith-chat.vercel.app`.
 7. CI: `tsc` dan `next build` tetap dipertahankan. Proteksi branch `main`.
 
-**Selesai bila:** Realtime komunitas aktif di Non-Production dan terverifikasi dua akun pada fase verifikasi, migrasi chat lengkap di Git, `main` sinkron dan terproteksi.
+**Selesai bila:** Realtime komunitas aktif di Non-Production dan terverifikasi dua akun pada fase verifikasi, migrasi chat dari PR #3 sudah di `main` dengan nomor versi sama seperti catatan database, `main` sinkron dan terproteksi.
 
 ## 6. Fase 1 - Penyempurnaan UI ala WhatsApp
 
@@ -144,7 +144,7 @@ Tinjau UI yang ada terhadap pola WhatsApp dan lengkapi yang kurang:
 - Realtime dan biaya yang naik seiring pengguna.
 - Spam dan penyalahgunaan bila pendaftaran terbuka tanpa konfirmasi email dan captcha.
 - Database bersama dengan game: fungsi game yang terbuka dan kebijakan akses yang berbeda-beda.
-- Migrasi chat di database belum seluruhnya ada di Git.
+- Nomor versi migrasi di Git dan di database belum seluruhnya sama.
 
 ## 15. Urutan yang disarankan
 
