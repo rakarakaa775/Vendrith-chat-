@@ -72,3 +72,22 @@ Each of these must be either applied through an approved process or renamed to t
 | `20261104071443` | `chat_private_session_list_rpc_hardening_v1` | `bfb25b43d8a6b7b35d8ee521703987d3` | format-only |  |
 | `20261104151218` | `chat_deletion_export_operations_v1` | `c1d9d733ba8d85016c55baa50db29cb9` | format-only |  |
 | `20261106182923` | `chat_attachment_pending_upload_visibility` | `0a14834d02e30bc1fa5b58e0db843ef1` | version mismatch | Same SQL (ignoring whitespace) is committed in Git as `20261107013000_chat_attachment_pending_upload_visibility.sql` (different version number). |
+
+## Update after follow-up work (2026-11-10)
+
+- `20261105153203_chat_account_lifecycle_service_role_grants` is now recorded in the Non-Production history (SQL identical to the Git file, MD5 `df2d8bb50aa0e8922dfedabc4fd518e8`). Its grants were already in effect through Supabase default privileges. The SQL was not executed.
+- New migration `20261110071111_chat_service_role_least_privilege_v1` was applied to Non-Production (Git: branch `chore/service-role-least-privilege`). It revokes the default `service_role` privileges on the 18 `public.chat_*` tables and grants back only what the account-lifecycle Edge Functions use: SELECT on all 18, INSERT and UPDATE on `chat_profiles` and `chat_account_deletion_jobs`, UPDATE on `chat_data_export_events`, DELETE on 11 cleanup tables. Default privileges and game-domain tables were not touched.
+- Git alignment branches (each one small): `chore/align-attachment-migration-version` renames `20261107013000_...` to `20261106182923_...` (contents unchanged), and `chore/align-attachment-hardening-regex` changes the filename regex in `20261103155201` from four to two backslashes to match the recorded SQL (both match `/` and `\`).
+
+## Disposable replay and catalog comparison
+
+**Method.** A database-only Supabase CLI stack (Postgres 17, isolated project id and ports) was created, and all 45 migrations from `integration/reconcile-2026-11-06` plus the three alignment changes above were applied with `supabase db start`. A catalog fingerprint (MD5 over per-object definitions) of the Chat objects (`public.chat_*` and the `chat_private` schema) was then compared with Non-Production. The replay stack was removed afterwards.
+
+**Result.**
+
+- All 45 migrations applied without errors.
+- Identical on both sides: tables and RLS flags (19), columns (135), constraints (89), indexes (60), policies (12), triggers (11), table grants (187), column grants (67), Realtime publication members (2), storage buckets (2), storage policies (5).
+- Functions (125): 121 identical after whitespace normalization. Four `chat_private` functions differ only in local alias names (`create_direct_conversation`, `get_notification_preferences`, `list_group_moderation_events`, `send_friend_request`); the logic is the same.
+- Function ACLs: `service_role` has EXECUTE on the 56 `public.chat_*` wrapper functions in Non-Production but not in the replay. Cause: in the hosted project the default privileges for functions created by `postgres` in `public` include `service_role`, while the local image does not. This is an environment difference, not migration drift.
+
+**Not covered.** Game-domain objects, table data, Auth and Storage service configuration, extensions, and Edge Function behavior. Application-level tests remain deferred to the verification phase.
