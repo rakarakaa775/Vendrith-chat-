@@ -417,18 +417,6 @@ export default function CommunityClient({ userId }: { userId: string }) {
     if (cleanupPending) setNotice("Profile avatar updated; previous image cleanup needs review.");
   }
 
-  async function addGroupMember(groupId: string) {
-    if (!groupMemberId || busy) return;
-    await perform(`add-group-member:${groupId}`, async () => {
-      const { error: rpcError } = await supabase.rpc("chat_add_group_member", {
-        p_conversation_id: groupId,
-        p_member_id: groupMemberId
-      });
-      if (rpcError) throw rpcError;
-      setGroupMemberId("");
-    }, "Player added to group.");
-  }
-
   const friendIds = new Set(friends.map((friend) => friend.friend_user_id));
   const incoming = requests.filter((request) => request.direction === "incoming");
   const outgoing = requests.filter((request) => request.direction === "outgoing");
